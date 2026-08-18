@@ -124,6 +124,8 @@ type ServiceSetFields struct {
 	Proxy *v1alpha1.ProxyConfiguration `json:"proxy"`
 	// PullSecret is service-set (platform-managed, hidden from API)
 	PullSecret corev1.LocalObjectReference `json:"pullSecret"`
+	// Release is service-set (platform-managed, hidden from API)
+	Release hypershiftv1beta1.Release `json:"release"`
 	// Scheduler is service-set (platform-managed, hidden from API)
 	Scheduler *v1alpha1.SchedulerConfiguration `json:"scheduler"`
 	// SecretEncryption is service-set (platform-managed, hidden from API)
