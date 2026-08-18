@@ -422,7 +422,8 @@
   },
   {
     "fieldPath": "spec.hostedCluster.release",
-    "writeMode": "mutable"
+    "writeMode": "service-set",
+    "hidden": true
   },
   {
     "fieldPath": "spec.hostedCluster.secretEncryption",

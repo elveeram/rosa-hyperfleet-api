@@ -9,8 +9,8 @@ import (
 // HostedClusterSpecPassthrough mirrors HostedClusterSpec from upstream HyperShift
 type HostedClusterSpecPassthrough struct {
 	// release specifies the desired OCP release payload for all the hosted cluster components.
-	// +k8s:openapi-gen=true
-	// +hyperfleet:write-mode=mutable
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
 	// +required
 	Release hypershiftv1beta1.Release `json:"release"`
 	// channel is an identifier for explicitly requesting that a non-default set of updates be applied to this cluster.

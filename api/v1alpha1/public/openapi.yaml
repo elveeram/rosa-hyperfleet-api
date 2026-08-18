@@ -3091,13 +3091,9 @@ components:
           platform:
               description: platform specifies the underlying infrastructure provider for the cluster
               type: object
-          release:
-              description: release specifies the desired OCP release payload for all the hosted cluster components.
-              type: object
       required:
           - networking
           - platform
-          - release
       type: object
     NodePoolSpecPassthrough:
       additionalProperties: true

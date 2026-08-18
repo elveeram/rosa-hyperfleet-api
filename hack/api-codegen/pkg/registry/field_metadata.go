@@ -443,7 +443,8 @@ var FieldRegistry = map[string]FieldMeta{
 	},
 	"spec.hostedCluster.release": {
 		FieldPath: "spec.hostedCluster.release",
-		WriteMode: Mutable,
+		WriteMode: ServiceSet,
+		Hidden:    true,
 	},
 	"spec.hostedCluster.secretEncryption": {
 		FieldPath: "spec.hostedCluster.secretEncryption",
