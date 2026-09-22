@@ -67,7 +67,7 @@
   },
   {
     "fieldPath": "spec.hostedCluster.channel",
-    "writeMode": "service-set",
+    "writeMode": "mutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },

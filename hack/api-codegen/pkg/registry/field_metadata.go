@@ -91,7 +91,7 @@ var FieldRegistry = TypedFieldRegistry{
 		},
 		"spec.hostedCluster.channel": {
 			FieldPath: "spec.hostedCluster.channel",
-			WriteMode: ServiceSet,
+			WriteMode: Mutable,
 			OwnerType: "Cluster",
 			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
 		},

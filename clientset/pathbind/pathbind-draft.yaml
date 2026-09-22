@@ -42,6 +42,11 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.hostedCluster.channel
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.hostedCluster.configuration.kubelet.containerLogMaxFiles
               goType: integer(int32)
               operations:
