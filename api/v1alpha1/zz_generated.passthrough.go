@@ -115,7 +115,7 @@ type HostedClusterSpecPassthrough struct {
 	// +k8s:openapi-gen=false
 	// +hyperfleet:write-mode=service-set
 	// +optional
-	Configuration *hypershiftv1beta1.ClusterConfiguration `json:"configuration,omitempty"`
+	Configuration *ClusterConfiguration `json:"configuration,omitempty"`
 	// operatorConfiguration specifies configuration for individual OCP operators in the cluster.
 	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set

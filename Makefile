@@ -381,7 +381,7 @@ codegen-passthrough: codegen-registry
 		-package v1alpha1 \
 		-registry ../hack/api-codegen/pkg/registry/field_metadata.json
 	rm -f api/v1alpha1/zz_generated.passthrough.go.raw
-	$(MAKE) codegen-registry
+	sed -i '' 's/Configuration \*hypershiftv1beta1\.ClusterConfiguration/Configuration *ClusterConfiguration/g' api/v1alpha1/zz_generated.passthrough.go
 
 codegen-passthrough-clobber:
 	rm -f api/v1alpha1/zz_generated.passthrough.go
