@@ -187,7 +187,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("resolve oidc signing key mode: %w", err)
 	}
-	resources, err := render.ClusterResources(&cluster, oidcSigningKeyExternal, baseDomain, r.RegionalConfig.ControlPlaneOperatorImage)
+	resources, err := render.ClusterResources(&cluster, oidcSigningKeyExternal, baseDomain)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("render cluster resources: %w", err)
 	}
@@ -356,7 +356,7 @@ func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *hyperf
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("resolve oidc signing key mode: %w", err)
 	}
-	resources, err := render.ClusterResources(cluster, oidcSigningKeyExternal, baseDomain, r.RegionalConfig.ControlPlaneOperatorImage)
+	resources, err := render.ClusterResources(cluster, oidcSigningKeyExternal, baseDomain)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("render cluster resources: %w", err)
 	}

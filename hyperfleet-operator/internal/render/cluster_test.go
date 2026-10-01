@@ -63,7 +63,7 @@ func testClusterWithOidcConfig() *hyperfleetv1alpha1.Cluster {
 }
 
 func TestClusterResourcesCount(t *testing.T) {
-	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com", "")
+	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com")
 	if err != nil {
 		t.Fatalf("ClusterResources: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestClusterResourcesCount(t *testing.T) {
 }
 
 func TestClusterResourcesTypes(t *testing.T) {
-	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com", "")
+	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com")
 	if err != nil {
 		t.Fatalf("ClusterResources: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestClusterResourcesTypes(t *testing.T) {
 // ExternalSecret and ServiceAccountSigningKey reference are rendered when the
 // referenced OidcConfig is type=unmanaged (oidcSigningKeyExternal=true).
 func TestClusterResourcesWithOidcConfig(t *testing.T) {
-	resources, err := ClusterResources(testClusterWithOidcConfig(), true, "f7a3.0.example.com", "")
+	resources, err := ClusterResources(testClusterWithOidcConfig(), true, "f7a3.0.example.com")
 	if err != nil {
 		t.Fatalf("ClusterResources: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestClusterResourcesWithOidcConfig(t *testing.T) {
 // TestClusterResourcesWithoutOidcConfig_NoExternalSecret verifies the legacy
 // path renders no OIDC signing key ExternalSecret.
 func TestClusterResourcesWithoutOidcConfig_NoExternalSecret(t *testing.T) {
-	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com", "")
+	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com")
 	if err != nil {
 		t.Fatalf("ClusterResources: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestClusterResourcesWithoutOidcConfig_NoExternalSecret(t *testing.T) {
 // no ExternalSecret/ServiceAccountSigningKey, since managed configs don't
 // store a signing key in Secrets Manager for ESO to deliver.
 func TestClusterResourcesWithManagedOidcConfig_NoExternalSecret(t *testing.T) {
-	resources, err := ClusterResources(testClusterWithOidcConfig(), false, "f7a3.0.example.com", "")
+	resources, err := ClusterResources(testClusterWithOidcConfig(), false, "f7a3.0.example.com")
 	if err != nil {
 		t.Fatalf("ClusterResources: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestClusterResourcesClearsStaleServiceAccountSigningKey(t *testing.T) {
 	cluster := testCluster()
 	cluster.Spec.HostedCluster.ServiceAccountSigningKey = &corev1.LocalObjectReference{Name: "stale-key"}
 
-	resources, err := ClusterResources(cluster, false, "f7a3.0.example.com", "")
+	resources, err := ClusterResources(cluster, false, "f7a3.0.example.com")
 	if err != nil {
 		t.Fatalf("ClusterResources: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestExtractUUIDFromIssuerURL(t *testing.T) {
 }
 
 func TestHostedClusterDNS(t *testing.T) {
-	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com", "")
+	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com")
 	if err != nil {
 		t.Fatalf("ClusterResources: %v", err)
 	}
@@ -306,42 +306,5 @@ func TestHostedClusterDNS(t *testing.T) {
 	// instead of the cluster ID, so HyperShift uploads to the correct S3 path.
 	if got := hc.Spec.InfraID; got != "abc12345" {
 		t.Errorf("infraID = %q, want %q (extracted from issuerURL)", got, "abc12345")
-	}
-}
-
-// hostedClusterFrom returns the rendered HostedCluster from a resource slice.
-func hostedClusterFrom(t *testing.T, resources []Resource) *hypershiftv1beta1.HostedCluster {
-	t.Helper()
-	for _, r := range resources {
-		if r.Resource == "hostedclusters" {
-			return r.Object.(*hypershiftv1beta1.HostedCluster)
-		}
-	}
-	t.Fatal("no hostedcluster resource found")
-	return nil
-}
-
-// TestHostedClusterControlPlaneOperatorImageAnnotation verifies the CPO image
-// override is stamped as an annotation when set, and omitted when empty.
-func TestHostedClusterControlPlaneOperatorImageAnnotation(t *testing.T) {
-	const cpoImage = "quay.io/me/hypershift:pr-1234"
-
-	resources, err := ClusterResources(testCluster(), false, "f7a3.0.example.com", cpoImage)
-	if err != nil {
-		t.Fatalf("ClusterResources: %v", err)
-	}
-	hc := hostedClusterFrom(t, resources)
-	if got := hc.Annotations[hypershiftv1beta1.ControlPlaneOperatorImageAnnotation]; got != cpoImage {
-		t.Errorf("CPO annotation = %q, want %q", got, cpoImage)
-	}
-
-	resources, err = ClusterResources(testCluster(), false, "f7a3.0.example.com", "")
-	if err != nil {
-		t.Fatalf("ClusterResources: %v", err)
-	}
-	hc = hostedClusterFrom(t, resources)
-	if _, ok := hc.Annotations[hypershiftv1beta1.ControlPlaneOperatorImageAnnotation]; ok {
-		t.Errorf("CPO annotation should be absent when override is empty, got %q",
-			hc.Annotations[hypershiftv1beta1.ControlPlaneOperatorImageAnnotation])
 	}
 }

@@ -302,6 +302,39 @@ var _ = Describe("NodePool Controller", func() {
 			Expect(updated.Status.Phase).To(Equal(hyperfleetv1alpha1.NodePoolPhaseReady))
 		})
 
+		It("should persist observed replicas from ReadDesire, preserving absent versus zero", func() {
+			np := newTestNodePool()
+			staleReplicas := int32(9)
+			np.Status.Replicas = &staleReplicas
+			Expect(k8sClient.Create(ctx, np)).To(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: testNS, Name: nodePoolName}, np)).To(Succeed())
+			np.Status.Replicas = &staleReplicas
+			Expect(k8sClient.Status().Update(ctx, np)).To(Succeed())
+
+			reconciler := &NodePoolReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+			fd := &fakeDynamo{}
+			absentReplicas := &dynamo.ReadDesireStatus{
+				KubeContent: &runtime.RawExtension{Raw: []byte(`{"spec":{"replicas":2},"status":{}}`)},
+			}
+			fd.readStatus = absentReplicas
+			reconciler.Dynamo = fd
+			reconciler.updateStatusFromDynamo(ctx, np, "", DesireStatusEntry{}, "")
+
+			var updated hyperfleetv1alpha1.NodePool
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: testNS, Name: nodePoolName}, &updated)).To(Succeed())
+			Expect(updated.Spec.NodePool.Replicas).NotTo(BeNil())
+			Expect(*updated.Spec.NodePool.Replicas).To(Equal(int32(2)))
+			Expect(updated.Status.Replicas).To(BeNil(), "missing observed status must not fall back to desired replicas")
+
+			fd.readStatus = &dynamo.ReadDesireStatus{
+				KubeContent: &runtime.RawExtension{Raw: []byte(`{"status":{"replicas":0}}`)},
+			}
+			reconciler.updateStatusFromDynamo(ctx, &updated, "", DesireStatusEntry{}, "")
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: testNS, Name: nodePoolName}, &updated)).To(Succeed())
+			Expect(updated.Status.Replicas).NotTo(BeNil())
+			Expect(*updated.Status.Replicas).To(Equal(int32(0)))
+		})
+
 		It("should clean up ApplyDesire and ReadDesire specs after deletion confirmed", func() {
 			cluster := newTestCluster(clusterName)
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())

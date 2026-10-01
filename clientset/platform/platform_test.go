@@ -18,6 +18,7 @@ package platform
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -28,6 +29,36 @@ import (
 
 	typedclient "github.com/openshift-online/rosa-hyperfleet-api/clientset/generated/typed/v1alpha1/public"
 )
+
+func TestNodePoolJSONDecodesObservedReplicas(t *testing.T) {
+	tests := []struct {
+		name      string
+		json      string
+		wantNil   bool
+		wantValue int32
+	}{
+		{name: "field absent", json: `{"status":{}}`, wantNil: true},
+		{name: "reported zero", json: `{"status":{"replicas":0}}`, wantValue: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var nodePool v1alpha1.NodePool
+			if err := json.Unmarshal([]byte(tt.json), &nodePool); err != nil {
+				t.Fatalf("decode NodePool JSON: %v", err)
+			}
+			if tt.wantNil {
+				if nodePool.Status.Replicas != nil {
+					t.Fatalf("Status.Replicas = %d, want nil", *nodePool.Status.Replicas)
+				}
+				return
+			}
+			if nodePool.Status.Replicas == nil || *nodePool.Status.Replicas != tt.wantValue {
+				t.Fatalf("Status.Replicas = %v, want %d", nodePool.Status.Replicas, tt.wantValue)
+			}
+		})
+	}
+}
 
 // stubClusterClient is a minimal implementation of typedclient.ClusterInterface.
 // Methods that should not be called during validation tests panic to catch regressions.

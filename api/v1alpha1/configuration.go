@@ -45,7 +45,7 @@ type ClusterConfiguration struct {
 	Scheduler *SchedulerConfiguration `json:"scheduler,omitempty"`
 
 	// proxy contains the configuration for the cluster-wide proxy.
-	// +k8s:openapi-gen=false
+	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
 	Proxy *ProxyConfiguration `json:"proxy,omitempty"`
 
@@ -167,7 +167,41 @@ type OAuthConfiguration struct{}
 
 type SchedulerConfiguration struct{}
 
-type ProxyConfiguration struct{}
+// ProxyConfiguration specifies the cluster-wide proxy settings.
+// +hyperfleet:upstream-reduced-object=configv1.ProxySpec
+type ProxyConfiguration struct {
+	// httpProxy is the URL of the proxy for HTTP requests.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:MaxLength=2048
+	// +optional
+	HTTPProxy string `json:"httpProxy,omitempty"`
+
+	// httpsProxy is the URL of the proxy for HTTPS requests.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:MaxLength=2048
+	// +optional
+	HTTPSProxy string `json:"httpsProxy,omitempty"`
+
+	// noProxy is a comma-separated list of hostnames, domains, IP addresses, or CIDRs
+	// to exclude from proxying.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:MaxLength=8192
+	// +optional
+	NoProxy string `json:"noProxy,omitempty"`
+
+	// trustedCA is a reference to a ConfigMap containing a CA certificate bundle
+	// used for proxy TLS verification.
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
+	// +optional
+	TrustedCA string `json:"trustedCA,omitempty"`
+
+	// readinessEndpoints is a list of endpoints used to verify proxy readiness.
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
+	// +optional
+	ReadinessEndpoints []string `json:"readinessEndpoints,omitempty"`
+}
 
 // MachineConfigSpec specifies machine-level configuration.
 // +hyperfleet:upstream-reduced-object=hypershiftv1beta1.MachineConfigSpec

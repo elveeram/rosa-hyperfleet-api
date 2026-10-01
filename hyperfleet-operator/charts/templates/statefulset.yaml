@@ -48,10 +48,6 @@ spec:
             - name: ALERTMANAGER_URL
               value: {{ .Values.alertmanager.url | quote }}
             {{- end }}
-            {{- if .Values.controlPlaneOperatorImage }}
-            - name: CONTROL_PLANE_OPERATOR_IMAGE
-              value: {{ .Values.controlPlaneOperatorImage | quote }}
-            {{- end }}
           ports:
             - name: health
               containerPort: 8081

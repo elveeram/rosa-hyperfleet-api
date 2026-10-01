@@ -1,7 +1,6 @@
 .PHONY: help build test test-unit test-integration lint clean \
 	build-hyperfleet-db build-operator build-api build-api-codegen \
 	test-hyperfleet-db test-operator test-operator-int test-api test-api-int test-api-codegen test-clientset \
-	coverage-api-codegen \
 	test-e2e test-e2e-api test-e2e-cli test-e2e-platform-monitoring test-e2e-zoa test-e2e-authz test-e2e-sdk test-e2e-rosa-cli \
 	test-e2e test-e2e-api test-e2e-cli test-e2e-platform-monitoring test-e2e-authz test-e2e-sdk \
 	e2e-authz-infra-up e2e-authz-infra-down e2e-init-db \
@@ -51,6 +50,7 @@ BRIDGE_GEN         := $(abspath $(TOOLS_BIN_DIR)/bridge-gen)
 PATHBIND_GEN       := $(abspath $(TOOLS_BIN_DIR)/pathbind-gen)
 SETUP_ENVTEST    := $(abspath $(TOOLS_BIN_DIR)/setup-envtest)
 GINKGO           := $(abspath $(TOOLS_BIN_DIR)/ginkgo)
+COVERAGE         ?=
 
 # ── SDK generation ───────────────────────────────────────────────────────
 SDK_MODULE        ?= github.com/openshift-online/rosa-hyperfleet-api
@@ -120,8 +120,6 @@ help:
 	@echo "                       Supports ROSA_FOCUS, ROSA_SKIP, ROSA_LABEL_FILTER"
 	@echo "  test-e2e-platform-monitoring  E2E monitoring"
 	@echo ""
-	@echo "  coverage-api-codegen Coverage report for codegen (hack/api-codegen)"
-	@echo ""
 	@echo "Code Quality:"
 	@echo "  lint                 golangci-lint on all modules"
 	@echo "  fmt                  Format Go source"
@@ -188,25 +186,22 @@ test-api-int:
 	cd platform-api && go test -v -race -count=1 -tags integration ./pkg/handlers/...
 
 test-api:
-	cd platform-api && go test -v -race -count=1 $$(go list ./... | grep -v '/test/e2e')
+	cd platform-api && go test -v -race -count=1 $(if $(COVERAGE),-covermode=atomic -coverprofile=../coverage-platform-api.out,) $$(go list ./... | grep -v '/test/e2e')
+	$(if $(filter html,$(COVERAGE)),cd platform-api && go tool cover -html=../coverage-platform-api.out -o ../coverage-platform-api.html,)
 
 test-api-codegen:
-	cd hack/api-codegen && go test -v -race -count=1 ./...
+	cd hack/api-codegen && go test -v -race -count=1 $(if $(COVERAGE),-covermode=atomic -coverprofile=../../coverage-api-codegen.out,) ./...
+	$(if $(filter html,$(COVERAGE)),cd hack/api-codegen && go tool cover -html=../../coverage-api-codegen.out -o ../../coverage-api-codegen.html,)
 
 test-clientset:
-	cd clientset && go test -v -race -count=1 ./...
-
-coverage-api-codegen:
-	cd hack/api-codegen && go test -race -coverprofile=coverage.out ./...
-	cd hack/api-codegen && go tool cover -func=coverage.out
-	@echo ""
-	@echo "HTML report: hack/api-codegen/coverage.html"
-	cd hack/api-codegen && go tool cover -html=coverage.out -o coverage.html
+	cd clientset && go test -v -race -count=1 $(if $(COVERAGE),-covermode=atomic -coverprofile=../coverage-clientset.out,) ./...
+	$(if $(filter html,$(COVERAGE)),cd clientset && go tool cover -html=../coverage-clientset.out -o ../coverage-clientset.html,)
 
 test-operator: $(SETUP_ENVTEST)
 	@ASSETS=$$($(SETUP_ENVTEST) use -p path --bin-dir $(ENVTEST_BIN_DIR)) && \
 		echo "envtest assets: $$ASSETS" && \
-		cd hyperfleet-operator && KUBEBUILDER_ASSETS="$$ASSETS" go test -v -race -count=1 ./internal/...
+		cd hyperfleet-operator && KUBEBUILDER_ASSETS="$$ASSETS" go test -v -race -count=1 $(if $(COVERAGE),-covermode=atomic -coverprofile=../coverage-hyperfleet-operator.out,) ./internal/...
+	$(if $(filter html,$(COVERAGE)),cd hyperfleet-operator && go tool cover -html=../coverage-hyperfleet-operator.out -o ../coverage-hyperfleet-operator.html,)
 
 test-hyperfleet-db:
 	cd hyperfleet-db && go test -v -race -count=1 ./...
@@ -507,7 +502,7 @@ image-push-operator: image-operator
 
 clean:
 	rm -rf bin/
-	rm -f coverage.out coverage.html
+	rm -f coverage.out coverage.html coverage-*.out coverage-*.html
 	rm -rf test-results/
 
 clean-test-containers:

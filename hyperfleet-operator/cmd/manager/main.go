@@ -147,9 +147,6 @@ func main() {
 	rcfg := render.RegionalConfig{
 		BaseDomainSuffix: baseDomain,
 		AWSRegion:        awsRegion,
-		// Development override: when set, every HostedCluster is pinned to this
-		// control-plane-operator image (empty disables the override).
-		ControlPlaneOperatorImage: os.Getenv("CONTROL_PLANE_OPERATOR_IMAGE"),
 	}
 
 	eventRouter := controller.NewEventRouter()

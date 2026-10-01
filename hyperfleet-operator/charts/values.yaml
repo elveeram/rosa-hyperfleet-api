@@ -13,12 +13,6 @@ baseDomain: ""
 alertmanager:
   url: ""
 
-# Optional development override for the control-plane-operator image. When set,
-# every HostedCluster the operator creates is stamped with the
-# hypershift.openshift.io/control-plane-operator-image annotation set to this
-# value. When empty, no override is applied.
-controlPlaneOperatorImage: ""
-
 postgres:
   secretName: postgres-dsn
   secretKey: dsn

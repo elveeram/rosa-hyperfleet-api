@@ -40,17 +40,34 @@ func TestConfigurationUsesLocalType(t *testing.T) {
 		t.Fatal("ClusterConfiguration definition not found")
 	}
 
-	// The local type's markers hide all sub-configs except kubelet and machineConfig.
+	// The local type's markers expose proxy, kubelet, and machineConfig.
 	// If the upstream hypershiftv1beta1.ClusterConfiguration were used instead,
 	// all 10 sub-config fields would be present (no hidden markers).
-	for _, visible := range []string{"kubelet", "machineConfig"} {
+	for _, visible := range []string{"proxy", "kubelet", "machineConfig"} {
 		if _, found := cc.Properties[visible]; !found {
 			t.Errorf("expected visible property %q in ClusterConfiguration", visible)
 		}
 	}
-	for _, hidden := range []string{"apiServer", "authentication", "featureGate", "image", "ingress", "network", "oauth", "scheduler", "proxy"} {
+	for _, hidden := range []string{"apiServer", "authentication", "featureGate", "image", "ingress", "network", "oauth", "scheduler"} {
 		if _, found := cc.Properties[hidden]; found {
 			t.Errorf("property %q should be hidden in ClusterConfiguration (local markers not applied?)", hidden)
+		}
+	}
+
+	// ProxyConfiguration exposes user-settable proxy fields but keeps the
+	// service-managed fields out of the generated schema.
+	pc, ok := output.Definitions["ProxyConfiguration"]
+	if !ok {
+		t.Fatal("ProxyConfiguration definition not found")
+	}
+	for _, visible := range []string{"httpProxy", "httpsProxy", "noProxy"} {
+		if _, found := pc.Properties[visible]; !found {
+			t.Errorf("expected visible property %q in ProxyConfiguration", visible)
+		}
+	}
+	for _, hidden := range []string{"trustedCA", "readinessEndpoints"} {
+		if _, found := pc.Properties[hidden]; found {
+			t.Errorf("property %q should be hidden in ProxyConfiguration", hidden)
 		}
 	}
 

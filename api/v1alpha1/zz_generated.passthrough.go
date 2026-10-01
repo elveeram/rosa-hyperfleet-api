@@ -201,23 +201,23 @@ type NodePoolSpecPassthrough struct {
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 	// management specifies behavior for managing nodes in the pool, such as
-	// +k8s:openapi-gen=false
+	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
 	// +required
 	Management hypershiftv1beta1.NodePoolManagement `json:"management"`
 	// autoScaling specifies auto-scaling behavior for the NodePool.
-	// +k8s:openapi-gen=false
-	// +hyperfleet:write-mode=service-set
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	AutoScaling *hypershiftv1beta1.NodePoolAutoScaling `json:"autoScaling,omitempty"`
 	// config is a list of references to ConfigMaps containing serialized
-	// +k8s:openapi-gen=false
-	// +hyperfleet:write-mode=service-set
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	Config []corev1.LocalObjectReference `json:"config,omitempty"`
 	// nodeDrainTimeout is the maximum amount of time that the controller will spend on retrying to drain a node until it succeeds.
-	// +k8s:openapi-gen=false
-	// +hyperfleet:write-mode=service-set
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
 	// nodeVolumeDetachTimeout is the maximum amount of time that the controller will spend on detaching volumes from a node.
@@ -226,13 +226,13 @@ type NodePoolSpecPassthrough struct {
 	// +optional
 	NodeVolumeDetachTimeout *metav1.Duration `json:"nodeVolumeDetachTimeout,omitempty"`
 	// nodeLabels propagates a list of labels to Nodes, only once on creation.
-	// +k8s:openapi-gen=false
+	// +k8s:openapi-gen=true
 	// +hyperfleet:write-mode=service-set
 	// +optional
 	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
 	// taints if specified, propagates a list of taints to Nodes, only once on creation.
-	// +k8s:openapi-gen=false
-	// +hyperfleet:write-mode=service-set
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	Taints []hypershiftv1beta1.Taint `json:"taints,omitempty"`
 	// pausedUntil is a field that can be used to pause reconciliation on the NodePool controller. Resulting in any change to the NodePool being ignored.
@@ -241,8 +241,8 @@ type NodePoolSpecPassthrough struct {
 	// +optional
 	PausedUntil *string `json:"pausedUntil,omitempty"`
 	// tuningConfig is a list of references to ConfigMaps containing serialized
-	// +k8s:openapi-gen=false
-	// +hyperfleet:write-mode=service-set
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
 	// +optional
 	TuningConfig []corev1.LocalObjectReference `json:"tuningConfig,omitempty"`
 	// arch is the preferred processor architecture for the NodePool. Different platforms might have different supported architectures.

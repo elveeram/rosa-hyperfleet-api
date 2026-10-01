@@ -11,11 +11,6 @@ type RegionalConfig struct {
 	// assembled as "{prefix}.{shard}.{BaseDomainSuffix}".
 	BaseDomainSuffix string
 	AWSRegion        string
-	// ControlPlaneOperatorImage, when non-empty, is stamped onto every
-	// HostedCluster as the hypershift.openshift.io/control-plane-operator-image
-	// annotation. Development-only override for testing custom
-	// control-plane-operator builds; empty disables the override.
-	ControlPlaneOperatorImage string
 }
 
 // Resource is a generated Kubernetes resource with its GVR for desire creation.

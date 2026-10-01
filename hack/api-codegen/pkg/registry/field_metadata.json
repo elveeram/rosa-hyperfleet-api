@@ -316,6 +316,37 @@
   {
     "fieldPath": "spec.hostedCluster.configuration.proxy",
     "writeMode": "service-set",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.proxy.httpProxy",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.proxy.httpsProxy",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.proxy.noProxy",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.proxy.readinessEndpoints",
+    "writeMode": "service-set",
+    "hidden": true,
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.proxy.trustedCA",
+    "writeMode": "service-set",
     "hidden": true,
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
@@ -811,6 +842,37 @@
   {
     "fieldPath": "proxy",
     "writeMode": "service-set",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "proxy.httpProxy",
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "proxy.httpsProxy",
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "proxy.noProxy",
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "proxy.readinessEndpoints",
+    "writeMode": "service-set",
+    "hidden": true,
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "proxy.trustedCA",
+    "writeMode": "service-set",
     "hidden": true,
     "ownerType": "ClusterConfiguration",
     "ownerGVK": ""
@@ -1116,8 +1178,7 @@
   },
   {
     "fieldPath": "spec.nodePool.autoScaling",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
     "ownerType": "NodePool",
     "ownerGVK": "hyperfleet.io/v1alpha1.NodePool"
   },
@@ -1129,29 +1190,25 @@
   },
   {
     "fieldPath": "spec.nodePool.config",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
     "ownerType": "NodePool",
     "ownerGVK": "hyperfleet.io/v1alpha1.NodePool"
   },
   {
     "fieldPath": "spec.nodePool.management",
     "writeMode": "service-set",
-    "hidden": true,
     "ownerType": "NodePool",
     "ownerGVK": "hyperfleet.io/v1alpha1.NodePool"
   },
   {
     "fieldPath": "spec.nodePool.nodeDrainTimeout",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
     "ownerType": "NodePool",
     "ownerGVK": "hyperfleet.io/v1alpha1.NodePool"
   },
   {
     "fieldPath": "spec.nodePool.nodeLabels",
     "writeMode": "service-set",
-    "hidden": true,
     "ownerType": "NodePool",
     "ownerGVK": "hyperfleet.io/v1alpha1.NodePool"
   },
@@ -1202,15 +1259,13 @@
   },
   {
     "fieldPath": "spec.nodePool.taints",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
     "ownerType": "NodePool",
     "ownerGVK": "hyperfleet.io/v1alpha1.NodePool"
   },
   {
     "fieldPath": "spec.nodePool.tuningConfig",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
     "ownerType": "NodePool",
     "ownerGVK": "hyperfleet.io/v1alpha1.NodePool"
   },
@@ -1274,6 +1329,38 @@
     "fieldPath": "type",
     "writeMode": "immutable",
     "ownerType": "PlatformSpec",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "httpProxy",
+    "writeMode": "mutable",
+    "ownerType": "ProxyConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "httpsProxy",
+    "writeMode": "mutable",
+    "ownerType": "ProxyConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "noProxy",
+    "writeMode": "mutable",
+    "ownerType": "ProxyConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "readinessEndpoints",
+    "writeMode": "service-set",
+    "hidden": true,
+    "ownerType": "ProxyConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "trustedCA",
+    "writeMode": "service-set",
+    "hidden": true,
+    "ownerType": "ProxyConfiguration",
     "ownerGVK": ""
   }
 ]

@@ -51,7 +51,8 @@ pkg/
 ```bash
 make build-api-codegen     # Build all 7 generator binaries
 make test-api-codegen      # Run tests
-make coverage-api-codegen  # Generate coverage report
+make test-unit COVERAGE=1  # Generate unit-test coverage profiles
+make test-unit COVERAGE=html  # Generate profiles and HTML reports
 ```
 
 ## Makefile codegen pipeline

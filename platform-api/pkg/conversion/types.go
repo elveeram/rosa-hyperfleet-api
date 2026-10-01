@@ -102,6 +102,8 @@ type ServiceSetFieldsHostedCluster struct {
 	Proxy string `json:"proxy,omitempty"`
 	// PullSecret is service-set (platform-managed, hidden from API)
 	PullSecret corev1.LocalObjectReference `json:"pullSecret,omitempty"`
+	// ReadinessEndpoints is service-set (platform-managed, hidden from API)
+	ReadinessEndpoints string `json:"readinessEndpoints,omitempty"`
 	// Scheduler is service-set (platform-managed, hidden from API)
 	Scheduler string `json:"scheduler,omitempty"`
 	// SecretEncryption is service-set (platform-managed, hidden from API)
@@ -120,6 +122,8 @@ type ServiceSetFieldsHostedCluster struct {
 	TopologyManagerPolicy string `json:"topologyManagerPolicy,omitempty"`
 	// TopologyManagerScope is service-set (platform-managed, hidden from API)
 	TopologyManagerScope string `json:"topologyManagerScope,omitempty"`
+	// TrustedCA is service-set (platform-managed, hidden from API)
+	TrustedCA string `json:"trustedCA,omitempty"`
 	// UpdateService is service-set (platform-managed, hidden from API)
 	UpdateService configv1.URL `json:"updateService,omitempty"`
 }
@@ -134,14 +138,10 @@ type ServiceSetFields struct {
 	Arch string `json:"arch,omitempty"`
 	// Authentication is service-set (platform-managed, hidden from API)
 	Authentication *v1alpha1.ClusterAuthentication `json:"authentication,omitempty"`
-	// AutoScaling is service-set (platform-managed, hidden from API)
-	AutoScaling *hypershiftv1beta1.NodePoolAutoScaling `json:"autoScaling,omitempty"`
 	// BaseDomain is service-set (platform-managed, hidden from API)
 	BaseDomain string `json:"baseDomain,omitempty"`
 	// BaseDomainPrefix is service-set (platform-managed, hidden from API)
 	BaseDomainPrefix *string `json:"baseDomainPrefix,omitempty"`
-	// Config is service-set (platform-managed, hidden from API)
-	Config []corev1.LocalObjectReference `json:"config,omitempty"`
 	// CpuManagerPolicy is service-set (platform-managed, hidden from API)
 	CpuManagerPolicy *string `json:"cpuManagerPolicy,omitempty"`
 	// CpuManagerPolicyOptions is service-set (platform-managed, hidden from API)
@@ -184,8 +184,6 @@ type ServiceSetFields struct {
 	MemoryThrottlingFactor *float64 `json:"memoryThrottlingFactor,omitempty"`
 	// Network is service-set (platform-managed, hidden from API)
 	Network *v1alpha1.NetworkConfiguration `json:"network,omitempty"`
-	// NodeDrainTimeout is service-set (platform-managed, hidden from API)
-	NodeDrainTimeout *metav1.Duration `json:"nodeDrainTimeout,omitempty"`
 	// NodeLabels is service-set (platform-managed, hidden from API)
 	NodeLabels map[string]string `json:"nodeLabels,omitempty"`
 	// NodeVolumeDetachTimeout is service-set (platform-managed, hidden from API)
@@ -202,16 +200,16 @@ type ServiceSetFields struct {
 	Proxy *v1alpha1.ProxyConfiguration `json:"proxy,omitempty"`
 	// PublicZoneID is service-set (platform-managed, hidden from API)
 	PublicZoneID string `json:"publicZoneID,omitempty"`
+	// ReadinessEndpoints is service-set (platform-managed, hidden from API)
+	ReadinessEndpoints []string `json:"readinessEndpoints,omitempty"`
 	// Scheduler is service-set (platform-managed, hidden from API)
 	Scheduler *v1alpha1.SchedulerConfiguration `json:"scheduler,omitempty"`
 	// SystemdUnits is service-set (platform-managed, hidden from API)
 	SystemdUnits []v1alpha1.SystemdUnit `json:"systemdUnits,omitempty"`
-	// Taints is service-set (platform-managed, hidden from API)
-	Taints []hypershiftv1beta1.Taint `json:"taints,omitempty"`
 	// TopologyManagerPolicy is service-set (platform-managed, hidden from API)
 	TopologyManagerPolicy *string `json:"topologyManagerPolicy,omitempty"`
 	// TopologyManagerScope is service-set (platform-managed, hidden from API)
 	TopologyManagerScope *string `json:"topologyManagerScope,omitempty"`
-	// TuningConfig is service-set (platform-managed, hidden from API)
-	TuningConfig []corev1.LocalObjectReference `json:"tuningConfig,omitempty"`
+	// TrustedCA is service-set (platform-managed, hidden from API)
+	TrustedCA string `json:"trustedCA,omitempty"`
 }

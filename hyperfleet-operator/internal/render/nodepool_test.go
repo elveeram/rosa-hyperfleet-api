@@ -173,6 +173,34 @@ func TestNodePoolResourceDefaults(t *testing.T) {
 	}
 }
 
+func TestNodePoolResourceAutoScalingOmitsDefaultReplicas(t *testing.T) {
+	np := testNodePool()
+	np.Spec.NodePool.Replicas = nil
+	min := int32(1)
+	np.Spec.NodePool.AutoScaling = &hypershiftv1beta1.NodePoolAutoScaling{
+		Min: &min,
+		Max: 3,
+	}
+
+	r, err := NodePoolResource(np, testCluster())
+	if err != nil {
+		t.Fatalf("NodePoolResource: %v", err)
+	}
+	rendered := r.Object.(*hypershiftv1beta1.NodePool)
+	if rendered.Spec.Replicas != nil {
+		t.Errorf("Replicas = %v with autoscaling enabled, want nil", *rendered.Spec.Replicas)
+	}
+	if rendered.Spec.AutoScaling == nil {
+		t.Fatal("AutoScaling is nil, want it preserved")
+	}
+	if rendered.Spec.AutoScaling.Min == nil || *rendered.Spec.AutoScaling.Min != min {
+		t.Errorf("AutoScaling.Min = %v, want %d", rendered.Spec.AutoScaling.Min, min)
+	}
+	if rendered.Spec.AutoScaling.Max != 3 {
+		t.Errorf("AutoScaling.Max = %d, want 3", rendered.Spec.AutoScaling.Max)
+	}
+}
+
 func TestNodePoolResourceLabels(t *testing.T) {
 	r, err := NodePoolResource(testNodePool(), testCluster())
 	if err != nil {

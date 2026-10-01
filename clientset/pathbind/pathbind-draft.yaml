@@ -114,6 +114,21 @@ resources:
               goType: array(string)
               operations:
                 - create
+            - path: spec.hostedCluster.configuration.proxy.httpProxy
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.configuration.proxy.httpsProxy
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.hostedCluster.configuration.proxy.noProxy
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.hostedCluster.imageContentSources
               goType: array(object)
               operations:
@@ -313,7 +328,27 @@ resources:
               operations:
                 - create
                 - update
+            - path: spec.nodePool.autoScaling.max
+              goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.autoScaling.min
+              goType: integer(int32)
+              operations:
+                - create
+                - update
             - path: spec.nodePool.clusterName
+              goType: string
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.config
+              goType: array(object)
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.nodeDrainTimeout
               goType: string
               operations:
                 - create
@@ -424,6 +459,16 @@ resources:
                 - update
             - path: spec.nodePool.replicas
               goType: integer(int32)
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.taints
+              goType: array(object)
+              operations:
+                - create
+                - update
+            - path: spec.nodePool.tuningConfig
+              goType: array(object)
               operations:
                 - create
                 - update

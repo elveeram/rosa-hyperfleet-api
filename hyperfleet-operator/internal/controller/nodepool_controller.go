@@ -310,16 +310,21 @@ func (r *NodePoolReconciler) updateStatusFromDynamo(ctx context.Context, nodePoo
 	}
 
 	var npConditions []metav1.Condition
+	var npReplicas *int32
+	var hasObservedStatus bool
 	if readStatus != nil && readStatus.KubeContent != nil {
 		var np struct {
 			Status struct {
 				Conditions []metav1.Condition `json:"conditions"`
+				Replicas   *int32             `json:"replicas"`
 			} `json:"status"`
 		}
 		if err := json.Unmarshal(readStatus.KubeContent.Raw, &np); err != nil {
 			log.Error(err, "Failed to unmarshal NodePool status")
 		} else {
 			npConditions = np.Status.Conditions
+			npReplicas = np.Status.Replicas
+			hasObservedStatus = true
 		}
 	}
 
@@ -336,6 +341,9 @@ func (r *NodePoolReconciler) updateStatusFromDynamo(ctx context.Context, nodePoo
 			if cond.Type == "Ready" {
 				meta.SetStatusCondition(&latest.Status.Conditions, cond)
 			}
+		}
+		if hasObservedStatus {
+			latest.Status.Replicas = npReplicas
 		}
 		if meta.IsStatusConditionTrue(latest.Status.Conditions, "Ready") {
 			latest.Status.Phase = hyperfleetv1alpha1.NodePoolPhaseReady

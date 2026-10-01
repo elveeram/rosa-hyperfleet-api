@@ -165,6 +165,7 @@ var typeToRegistryPrefix = map[string]string{
 	"ClusterConfiguration":         "",
 	"ClusterNetworking":            "",
 	"ClusterDNS":                   "",
+	"ProxyConfiguration":           "",
 	"KubeletConfig":                "kubelet",
 	"MachineConfigSpec":            "machineConfig",
 }
