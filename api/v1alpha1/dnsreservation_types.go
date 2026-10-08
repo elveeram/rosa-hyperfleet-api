@@ -67,6 +67,21 @@ type DNSReservationSpec struct {
 	// BaseDomain. Computed at creation time as {prefix}.{shard}.{baseDomain},
 	// where baseDomain is the operator's configured --base-domain.
 	BaseDomain string `json:"baseDomain"`
+
+	// ClusterArch identifies the cluster architecture that can use this domain.
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
+	ClusterArch string `json:"clusterArch,omitempty"`
+
+	// UserDefined is true when the reservation was created by a customer.
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
+	UserDefined bool `json:"userDefined,omitempty"`
+
+	// ReservedAt is the time when the domain was reserved.
+	// +k8s:openapi-gen=false
+	// +hyperfleet:write-mode=service-set
+	ReservedAt metav1.Time `json:"reservedAt,omitempty"`
 }
 
 // +kubebuilder:object:root=true

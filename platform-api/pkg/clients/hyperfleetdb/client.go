@@ -312,6 +312,49 @@ func (c *Client) GetOidcIssuerIndex(ctx context.Context, indexName string) (*hyp
 	return &idx, nil
 }
 
+// CreateDNSDomainIndex reserves a generated HCP DNS prefix globally.
+func (c *Client) CreateDNSDomainIndex(ctx context.Context, accountID string, idx *hyperfleetv1alpha1.Index) error {
+	setAccountLabel(idx, accountID)
+	return c.client.Create(ctx, idx)
+}
+
+// DeleteDNSDomainIndex removes a DNS-domain prefix reservation.
+func (c *Client) DeleteDNSDomainIndex(ctx context.Context, namespace, name string) error {
+	var idx hyperfleetv1alpha1.Index
+	if err := c.client.Get(ctx, k8stypes.NamespacedName{Namespace: namespace, Name: name}, &idx); err != nil {
+		return err
+	}
+	return c.client.Delete(ctx, &idx)
+}
+
+// CreateDNSDomainReservation stores an unclaimed DNS domain for an account.
+func (c *Client) CreateDNSDomainReservation(ctx context.Context, accountID string, reservation *hyperfleetv1alpha1.DNSReservation) error {
+	reservation.Namespace = accountNamespace(accountID)
+	setAccountLabel(reservation, accountID)
+	return c.client.Create(ctx, reservation)
+}
+
+// ListDNSDomainReservations lists customer-created DNS domains for an account.
+func (c *Client) ListDNSDomainReservations(ctx context.Context, accountID string) (*hyperfleetv1alpha1.DNSReservationList, error) {
+	var list hyperfleetv1alpha1.DNSReservationList
+	if err := c.client.List(ctx, &list, client.InNamespace(accountNamespace(accountID))); err != nil {
+		return nil, err
+	}
+	return &list, nil
+}
+
+// DeleteDNSDomainReservation deletes a customer-created DNS domain reservation.
+func (c *Client) DeleteDNSDomainReservation(ctx context.Context, accountID, name string) error {
+	var reservation hyperfleetv1alpha1.DNSReservation
+	if err := c.client.Get(ctx, k8stypes.NamespacedName{
+		Namespace: accountNamespace(accountID),
+		Name:      name,
+	}, &reservation); err != nil {
+		return err
+	}
+	return c.client.Delete(ctx, &reservation)
+}
+
 // --- Error helpers ---
 
 // IsNotFound returns true if the error is a Kubernetes 404.

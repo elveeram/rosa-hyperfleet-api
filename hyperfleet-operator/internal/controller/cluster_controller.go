@@ -168,13 +168,21 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	// Reserve a DNS base domain before rendering resources.
+	// Use a customer-provided DNS base domain when configured; otherwise reserve
+	// a generated domain from the regional pool.
 	baseDomain := cluster.Status.BaseDomain
 	if baseDomain == "" {
-		var err error
-		baseDomain, err = r.reserveDNS(ctx, &cluster)
-		if err != nil {
-			return ctrl.Result{}, err
+		if requested := cluster.Spec.HostedCluster.DNS.BaseDomain; requested != "" {
+			baseDomain = requested
+			if err := r.persistBaseDomain(ctx, &cluster, baseDomain); err != nil {
+				return ctrl.Result{}, fmt.Errorf("persist customer DNS base domain: %w", err)
+			}
+		} else {
+			var err error
+			baseDomain, err = r.reserveDNS(ctx, &cluster)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 

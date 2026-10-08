@@ -4401,6 +4401,8 @@ components:
                                       type: object
                                   type:
                                       description: type specifies the underlying infrastructure provider for the cluster.
+                                      enum:
+                                          - AWS
                                       maxLength: 100
                                       type: string
                               required:
@@ -6806,6 +6808,8 @@ components:
                                                   type: object
                                               type:
                                                   description: type specifies the underlying infrastructure provider for the cluster.
+                                                  enum:
+                                                      - AWS
                                                   maxLength: 100
                                                   type: string
                                           required:
@@ -10560,6 +10564,8 @@ components:
               type: object
           type:
               description: type specifies the underlying infrastructure provider for the cluster.
+              enum:
+                  - AWS
               maxLength: 100
               type: string
       required:

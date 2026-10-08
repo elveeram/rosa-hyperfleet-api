@@ -379,25 +379,25 @@
   },
   {
     "fieldPath": "spec.hostedCluster.dns.baseDomain",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
   {
     "fieldPath": "spec.hostedCluster.dns.baseDomainPrefix",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
   {
     "fieldPath": "spec.hostedCluster.dns.privateZoneID",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
   {
     "fieldPath": "spec.hostedCluster.dns.publicZoneID",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
@@ -896,25 +896,25 @@
   },
   {
     "fieldPath": "baseDomain",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "ClusterDNS",
     "ownerGVK": ""
   },
   {
     "fieldPath": "baseDomainPrefix",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "ClusterDNS",
     "ownerGVK": ""
   },
   {
     "fieldPath": "privateZoneID",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "ClusterDNS",
     "ownerGVK": ""
   },
   {
     "fieldPath": "publicZoneID",
-    "writeMode": "service-set",
+    "writeMode": "immutable",
     "ownerType": "ClusterDNS",
     "ownerGVK": ""
   },
@@ -953,6 +953,27 @@
     "writeMode": "mutable",
     "ownerType": "ClusterNetworking",
     "ownerGVK": ""
+  },
+  {
+    "fieldPath": "spec.clusterArch",
+    "writeMode": "service-set",
+    "hidden": true,
+    "ownerType": "DNSReservation",
+    "ownerGVK": "hyperfleet.io/v1alpha1.DNSReservation"
+  },
+  {
+    "fieldPath": "spec.reservedAt",
+    "writeMode": "service-set",
+    "hidden": true,
+    "ownerType": "DNSReservation",
+    "ownerGVK": "hyperfleet.io/v1alpha1.DNSReservation"
+  },
+  {
+    "fieldPath": "spec.userDefined",
+    "writeMode": "service-set",
+    "hidden": true,
+    "ownerType": "DNSReservation",
+    "ownerGVK": "hyperfleet.io/v1alpha1.DNSReservation"
   },
   {
     "fieldPath": "allowedUnsafeSysctls",
