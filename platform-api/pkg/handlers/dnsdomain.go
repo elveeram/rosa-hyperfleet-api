@@ -119,6 +119,11 @@ func (h *DNSDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		baseDomain := fmt.Sprintf("%s.%s.%s", prefix, dnsDomainShard, h.baseDomainSuffix)
+		if len(baseDomain) > dnsMaxNameLength || len(utilvalidation.IsDNS1123Subdomain(baseDomain)) != 0 {
+			h.logger.Error("generated DNS domain is invalid", "account_id", redact(accountID))
+			writeDNSDomainError(w, http.StatusServiceUnavailable, "DNSDOMAINS-CREATE-001", "DNS domain suffix is not configured", h.logger)
+			return
+		}
 		index := &hyperfleetv1alpha1.Index{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      prefix,

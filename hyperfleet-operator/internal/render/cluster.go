@@ -2,7 +2,9 @@ package render
 
 import (
 	"fmt"
+	"maps"
 	"path"
+	"slices"
 	"strings"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -311,7 +313,7 @@ func hostedCluster(cluster *hyperfleetv1alpha1.Cluster, oidcSigningKeyExternal b
 	// --- Platform overrides ---
 	if hcSpec.Platform.AWS != nil {
 		hcSpec.Platform.AWS.EndpointAccess = hypershiftv1beta1.PublicAndPrivate
-		hcSpec.Platform.AWS.ResourceTags = appendSystemTags(hcSpec.Platform.AWS.ResourceTags, clusterID)
+		hcSpec.Platform.AWS.ResourceTags = appendSystemTags(hcSpec.Platform.AWS.ResourceTags, clusterID, cluster.Spec.Tags)
 	}
 
 	// References the Secret materialized by oidcSigningKeySecret's ExternalSecret.
@@ -415,7 +417,14 @@ func defaultEtcdSpec() hypershiftv1beta1.EtcdSpec {
 	}
 }
 
-func appendSystemTags(existing []hypershiftv1beta1.AWSResourceTag, clusterID string) []hypershiftv1beta1.AWSResourceTag {
+// appendSystemTags prepends the Red Hat system tags to existing, then appends
+// the customer-defined tags from Cluster.Spec.Tags. System tags win on key
+// collision: they are written first and customerTags skips keys already
+// present, so a customer cannot shadow red-hat-managed or the cluster
+// ownership tag. Customer tags are emitted in sorted key order so repeated
+// renders of the same Cluster produce an identical HostedCluster spec and do
+// not cause spurious updates.
+func appendSystemTags(existing []hypershiftv1beta1.AWSResourceTag, clusterID string, customerTags map[string]string) []hypershiftv1beta1.AWSResourceTag {
 	tags := []hypershiftv1beta1.AWSResourceTag{
 		{Key: "red-hat-managed", Value: "true"},
 	}
@@ -424,7 +433,19 @@ func appendSystemTags(existing []hypershiftv1beta1.AWSResourceTag, clusterID str
 			Key: fmt.Sprintf("kubernetes.io/cluster/%s", clusterID), Value: "owned",
 		})
 	}
-	return append(tags, existing...)
+	tags = append(tags, existing...)
+
+	seen := make(map[string]struct{}, len(tags))
+	for _, t := range tags {
+		seen[t.Key] = struct{}{}
+	}
+	for _, key := range slices.Sorted(maps.Keys(customerTags)) {
+		if _, taken := seen[key]; taken {
+			continue
+		}
+		tags = append(tags, hypershiftv1beta1.AWSResourceTag{Key: key, Value: customerTags[key]})
+	}
+	return tags
 }
 
 func mustParseCIDR(s string) ipnet.IPNet {

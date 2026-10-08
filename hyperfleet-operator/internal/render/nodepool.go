@@ -58,7 +58,10 @@ func NodePoolResource(nodePool *hyperfleetv1alpha1.NodePool, cluster *hyperfleet
 				npSpec.Platform.AWS.RootVolume.Type = "gp3"
 			}
 		}
-		npSpec.Platform.AWS.ResourceTags = appendSystemTags(npSpec.Platform.AWS.ResourceTags, "")
+		// The worker EC2 instances are created by the NodePool, not the
+		// HostedCluster, so the cluster's customer tags have to be applied here
+		// too for day-1 tagging to actually reach them.
+		npSpec.Platform.AWS.ResourceTags = appendSystemTags(npSpec.Platform.AWS.ResourceTags, "", cluster.Spec.Tags)
 	}
 
 	return Resource{

@@ -281,3 +281,47 @@ func TestNodePoolResourceNodeLabelsEmpty(t *testing.T) {
 		t.Errorf("NodeLabels = %v, want empty", got)
 	}
 }
+
+// Worker EC2 instances are created by the NodePool, so the cluster's customer
+// tags have to reach the NodePool spec for day-1 tagging to cover them.
+func TestNodePoolInheritsClusterCustomerTags(t *testing.T) {
+	cluster := testCluster()
+	cluster.Spec.Tags = map[string]string{
+		"cost-center": "cc-1234",
+		"environment": "production",
+	}
+
+	resource, err := NodePoolResource(testNodePool(), cluster)
+	if err != nil {
+		t.Fatalf("NodePoolResource: %v", err)
+	}
+	np := resource.Object.(*hypershiftv1beta1.NodePool)
+
+	got := tagPairs(np.Spec.Platform.AWS.ResourceTags)
+	if got["cost-center"] != "cc-1234" {
+		t.Errorf("cost-center = %q, want %q", got["cost-center"], "cc-1234")
+	}
+	if got["environment"] != "production" {
+		t.Errorf("environment = %q, want %q", got["environment"], "production")
+	}
+	if got["red-hat-managed"] != "true" {
+		t.Errorf("red-hat-managed = %q, want %q", got["red-hat-managed"], "true")
+	}
+	// NodePoolResource passes an empty cluster ID, so no ownership tag is added.
+	if _, ok := got["kubernetes.io/cluster/abc12345"]; ok {
+		t.Errorf("resourceTags = %v, want no cluster ownership tag", got)
+	}
+}
+
+func TestNodePoolWithoutClusterTags(t *testing.T) {
+	resource, err := NodePoolResource(testNodePool(), testCluster())
+	if err != nil {
+		t.Fatalf("NodePoolResource: %v", err)
+	}
+	np := resource.Object.(*hypershiftv1beta1.NodePool)
+
+	tags := np.Spec.Platform.AWS.ResourceTags
+	if len(tags) != 1 || tags[0].Key != "red-hat-managed" {
+		t.Errorf("resourceTags = %v, want only the red-hat-managed system tag", tags)
+	}
+}

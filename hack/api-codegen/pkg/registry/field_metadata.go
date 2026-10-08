@@ -83,8 +83,7 @@ var FieldRegistry = TypedFieldRegistry{
 		},
 		"spec.hostedCluster.autoscaling": {
 			FieldPath: "spec.hostedCluster.autoscaling",
-			WriteMode: ServiceSet,
-			Hidden:    true,
+			WriteMode: Mutable,
 			OwnerType: "Cluster",
 			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
 		},
@@ -131,8 +130,37 @@ var FieldRegistry = TypedFieldRegistry{
 		},
 		"spec.hostedCluster.configuration.ingress": {
 			FieldPath: "spec.hostedCluster.configuration.ingress",
-			WriteMode: ServiceSet,
-			Hidden:    true,
+			WriteMode: Mutable,
+			OwnerType: "Cluster",
+			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
+		},
+		"spec.hostedCluster.configuration.ingress.componentRoutes": {
+			FieldPath: "spec.hostedCluster.configuration.ingress.componentRoutes",
+			WriteMode: Mutable,
+			OwnerType: "Cluster",
+			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
+		},
+		"spec.hostedCluster.configuration.ingress.componentRoutes.hostname": {
+			FieldPath: "spec.hostedCluster.configuration.ingress.componentRoutes.hostname",
+			WriteMode: Mutable,
+			OwnerType: "Cluster",
+			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
+		},
+		"spec.hostedCluster.configuration.ingress.componentRoutes.name": {
+			FieldPath: "spec.hostedCluster.configuration.ingress.componentRoutes.name",
+			WriteMode: Mutable,
+			OwnerType: "Cluster",
+			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
+		},
+		"spec.hostedCluster.configuration.ingress.componentRoutes.namespace": {
+			FieldPath: "spec.hostedCluster.configuration.ingress.componentRoutes.namespace",
+			WriteMode: Mutable,
+			OwnerType: "Cluster",
+			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
+		},
+		"spec.hostedCluster.configuration.ingress.componentRoutes.servingCertKeyPairSecret": {
+			FieldPath: "spec.hostedCluster.configuration.ingress.componentRoutes.servingCertKeyPairSecret",
+			WriteMode: Mutable,
 			OwnerType: "Cluster",
 			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
 		},
@@ -633,11 +661,10 @@ var FieldRegistry = TypedFieldRegistry{
 			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
 		},
 		"spec.tags": {
-			FieldPath:   "spec.tags",
-			WriteMode:   Mutable,
-			FeatureGate: "HyperFleetAutoScaling",
-			OwnerType:   "Cluster",
-			OwnerGVK:    "hyperfleet.io/v1alpha1.Cluster",
+			FieldPath: "spec.tags",
+			WriteMode: Immutable,
+			OwnerType: "Cluster",
+			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
 		},
 	},
 	"ClusterConfiguration": {
@@ -664,8 +691,37 @@ var FieldRegistry = TypedFieldRegistry{
 		},
 		"ingress": {
 			FieldPath: "ingress",
-			WriteMode: ServiceSet,
-			Hidden:    true,
+			WriteMode: Mutable,
+			OwnerType: "ClusterConfiguration",
+			OwnerGVK:  "",
+		},
+		"ingress.componentRoutes": {
+			FieldPath: "ingress.componentRoutes",
+			WriteMode: Mutable,
+			OwnerType: "ClusterConfiguration",
+			OwnerGVK:  "",
+		},
+		"ingress.componentRoutes.hostname": {
+			FieldPath: "ingress.componentRoutes.hostname",
+			WriteMode: Mutable,
+			OwnerType: "ClusterConfiguration",
+			OwnerGVK:  "",
+		},
+		"ingress.componentRoutes.name": {
+			FieldPath: "ingress.componentRoutes.name",
+			WriteMode: Mutable,
+			OwnerType: "ClusterConfiguration",
+			OwnerGVK:  "",
+		},
+		"ingress.componentRoutes.namespace": {
+			FieldPath: "ingress.componentRoutes.namespace",
+			WriteMode: Mutable,
+			OwnerType: "ClusterConfiguration",
+			OwnerGVK:  "",
+		},
+		"ingress.componentRoutes.servingCertKeyPairSecret": {
+			FieldPath: "ingress.componentRoutes.servingCertKeyPairSecret",
+			WriteMode: Mutable,
 			OwnerType: "ClusterConfiguration",
 			OwnerGVK:  "",
 		},
@@ -991,6 +1047,32 @@ var FieldRegistry = TypedFieldRegistry{
 			OwnerGVK:  "",
 		},
 	},
+	"ComponentRouteConfiguration": {
+		"hostname": {
+			FieldPath: "hostname",
+			WriteMode: Mutable,
+			OwnerType: "ComponentRouteConfiguration",
+			OwnerGVK:  "",
+		},
+		"name": {
+			FieldPath: "name",
+			WriteMode: Mutable,
+			OwnerType: "ComponentRouteConfiguration",
+			OwnerGVK:  "",
+		},
+		"namespace": {
+			FieldPath: "namespace",
+			WriteMode: Mutable,
+			OwnerType: "ComponentRouteConfiguration",
+			OwnerGVK:  "",
+		},
+		"servingCertKeyPairSecret": {
+			FieldPath: "servingCertKeyPairSecret",
+			WriteMode: Mutable,
+			OwnerType: "ComponentRouteConfiguration",
+			OwnerGVK:  "",
+		},
+	},
 	"DNSReservation": {
 		"spec.clusterArch": {
 			FieldPath: "spec.clusterArch",
@@ -1012,6 +1094,38 @@ var FieldRegistry = TypedFieldRegistry{
 			Hidden:    true,
 			OwnerType: "DNSReservation",
 			OwnerGVK:  "hyperfleet.io/v1alpha1.DNSReservation",
+		},
+	},
+	"IngressConfiguration": {
+		"componentRoutes": {
+			FieldPath: "componentRoutes",
+			WriteMode: Mutable,
+			OwnerType: "IngressConfiguration",
+			OwnerGVK:  "",
+		},
+		"componentRoutes.hostname": {
+			FieldPath: "componentRoutes.hostname",
+			WriteMode: Mutable,
+			OwnerType: "IngressConfiguration",
+			OwnerGVK:  "",
+		},
+		"componentRoutes.name": {
+			FieldPath: "componentRoutes.name",
+			WriteMode: Mutable,
+			OwnerType: "IngressConfiguration",
+			OwnerGVK:  "",
+		},
+		"componentRoutes.namespace": {
+			FieldPath: "componentRoutes.namespace",
+			WriteMode: Mutable,
+			OwnerType: "IngressConfiguration",
+			OwnerGVK:  "",
+		},
+		"componentRoutes.servingCertKeyPairSecret": {
+			FieldPath: "componentRoutes.servingCertKeyPairSecret",
+			WriteMode: Mutable,
+			OwnerType: "IngressConfiguration",
+			OwnerGVK:  "",
 		},
 	},
 	"KubeletConfig": {

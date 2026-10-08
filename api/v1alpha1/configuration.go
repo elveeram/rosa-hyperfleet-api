@@ -26,8 +26,8 @@ type ClusterConfiguration struct {
 	Image *ImageConfiguration `json:"image,omitempty"`
 
 	// ingress contains the configuration for ingress.
-	// +k8s:openapi-gen=false
-	// +hyperfleet:write-mode=service-set
+	// +k8s:openapi-gen=true
+	// +hyperfleet:write-mode=mutable
 	Ingress *IngressConfiguration `json:"ingress,omitempty"`
 
 	// network contains the configuration for cluster networking.
@@ -160,7 +160,43 @@ type FeatureGateConfiguration struct{}
 
 type ImageConfiguration struct{}
 
-type IngressConfiguration struct{}
+// IngressConfiguration specifies the cluster-wide ingress settings.
+// +hyperfleet:upstream-reduced-object=configv1.IngressSpec
+type IngressConfiguration struct {
+	// componentRoutes configures hostnames and serving certificates for
+	// the console and downloads OpenShift component routes.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:MaxItems=2
+	// +listType=map
+	// +listMapKey=namespace
+	// +listMapKey=name
+	// +optional
+	ComponentRoutes []ComponentRouteConfiguration `json:"componentRoutes,omitempty"`
+}
+
+// ComponentRouteConfiguration specifies a custom hostname and serving
+// certificate for an OpenShift component route.
+// +hyperfleet:upstream-reduced-object=configv1.ComponentRouteSpec
+type ComponentRouteConfiguration struct {
+	// namespace identifies the namespace containing the component route.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:Enum=openshift-console
+	Namespace string `json:"namespace"`
+
+	// name identifies the component route within its namespace.
+	// +hyperfleet:write-mode=mutable
+	// +kubebuilder:validation:Enum=console;downloads
+	Name string `json:"name"`
+
+	// hostname is the hostname that should be used by the route.
+	// +hyperfleet:write-mode=mutable
+	Hostname configv1.Hostname `json:"hostname"`
+
+	// servingCertKeyPairSecret references a TLS secret in openshift-config.
+	// +hyperfleet:write-mode=mutable
+	// +optional
+	ServingCertKeyPairSecret configv1.SecretNameReference `json:"servingCertKeyPairSecret"`
+}
 
 type NetworkConfiguration struct{}
 

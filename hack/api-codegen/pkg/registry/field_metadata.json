@@ -59,8 +59,7 @@
   },
   {
     "fieldPath": "spec.hostedCluster.autoscaling",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
@@ -107,8 +106,37 @@
   },
   {
     "fieldPath": "spec.hostedCluster.configuration.ingress",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.ingress.componentRoutes",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.ingress.componentRoutes.hostname",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.ingress.componentRoutes.name",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.ingress.componentRoutes.namespace",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
+    "fieldPath": "spec.hostedCluster.configuration.ingress.componentRoutes.servingCertKeyPairSecret",
+    "writeMode": "mutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
@@ -610,8 +638,7 @@
   },
   {
     "fieldPath": "spec.tags",
-    "writeMode": "mutable",
-    "featureGate": "HyperFleetAutoScaling",
+    "writeMode": "immutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
@@ -638,8 +665,37 @@
   },
   {
     "fieldPath": "ingress",
-    "writeMode": "service-set",
-    "hidden": true,
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "ingress.componentRoutes",
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "ingress.componentRoutes.hostname",
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "ingress.componentRoutes.name",
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "ingress.componentRoutes.namespace",
+    "writeMode": "mutable",
+    "ownerType": "ClusterConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "ingress.componentRoutes.servingCertKeyPairSecret",
+    "writeMode": "mutable",
     "ownerType": "ClusterConfiguration",
     "ownerGVK": ""
   },
@@ -961,6 +1017,30 @@
     "ownerGVK": ""
   },
   {
+    "fieldPath": "hostname",
+    "writeMode": "mutable",
+    "ownerType": "ComponentRouteConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "name",
+    "writeMode": "mutable",
+    "ownerType": "ComponentRouteConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "namespace",
+    "writeMode": "mutable",
+    "ownerType": "ComponentRouteConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "servingCertKeyPairSecret",
+    "writeMode": "mutable",
+    "ownerType": "ComponentRouteConfiguration",
+    "ownerGVK": ""
+  },
+  {
     "fieldPath": "spec.clusterArch",
     "writeMode": "service-set",
     "hidden": true,
@@ -980,6 +1060,36 @@
     "hidden": true,
     "ownerType": "DNSReservation",
     "ownerGVK": "hyperfleet.io/v1alpha1.DNSReservation"
+  },
+  {
+    "fieldPath": "componentRoutes",
+    "writeMode": "mutable",
+    "ownerType": "IngressConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "componentRoutes.hostname",
+    "writeMode": "mutable",
+    "ownerType": "IngressConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "componentRoutes.name",
+    "writeMode": "mutable",
+    "ownerType": "IngressConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "componentRoutes.namespace",
+    "writeMode": "mutable",
+    "ownerType": "IngressConfiguration",
+    "ownerGVK": ""
+  },
+  {
+    "fieldPath": "componentRoutes.servingCertKeyPairSecret",
+    "writeMode": "mutable",
+    "ownerType": "IngressConfiguration",
+    "ownerGVK": ""
   },
   {
     "fieldPath": "allowedUnsafeSysctls",

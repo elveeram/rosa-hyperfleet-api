@@ -126,8 +126,6 @@ func (r *ClusterReconciler) releaseOidcConfigClaim(ctx context.Context, cluster 
 
 // Reconcile reserves or claims the cluster's DNS domain before rendering resources.
 func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-
 	var cluster hyperfleetv1alpha1.Cluster
 	if err := r.Get(ctx, req.NamespacedName, &cluster); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -155,47 +153,17 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Look up Placement — if none or not Bound, wait.
-	placementName := fmt.Sprintf("%s-placement", cluster.Name)
-	var placement hyperfleetv1alpha1.Placement
-	if err := r.Get(ctx, types.NamespacedName{Namespace: cluster.Namespace, Name: placementName}, &placement); err != nil {
-		if apierrors.IsNotFound(err) {
-			log.Info("Waiting for Placement", "cluster", cluster.Name)
-			r.setPhase(ctx, &cluster, hyperfleetv1alpha1.ClusterPhaseWaitingForPlacement)
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-		return ctrl.Result{}, fmt.Errorf("get placement: %w", err)
+	placement, result, waiting, err := r.getBoundPlacement(ctx, &cluster)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
-	if placement.Status.Phase != hyperfleetv1alpha1.PlacementPhaseBound {
-		log.Info("Placement not yet Bound", "placement", placementName)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	if waiting {
+		return result, nil
 	}
 
-	// Claim a customer-managed DNS reservation before rendering so deletion and
-	// cluster use are serialized through the reservation's resource version.
-	requestedBaseDomain := cluster.Spec.HostedCluster.DNS.BaseDomain
-	if requestedBaseDomain != "" && isManagedDNSBaseDomain(requestedBaseDomain, r.RegionalConfig.BaseDomainSuffix) {
-		if err := r.claimCustomerDNSReservation(ctx, &cluster, requestedBaseDomain); err != nil {
-			return ctrl.Result{}, fmt.Errorf("claim customer DNS reservation: %w", err)
-		}
-	}
-
-	// Use a customer-provided DNS base domain when configured; otherwise reserve
-	// a generated domain from the regional pool.
-	baseDomain := cluster.Status.BaseDomain
-	if baseDomain == "" {
-		if requestedBaseDomain != "" {
-			baseDomain = requestedBaseDomain
-			if err := r.persistBaseDomain(ctx, &cluster, baseDomain); err != nil {
-				return ctrl.Result{}, fmt.Errorf("persist customer DNS base domain: %w", err)
-			}
-		} else {
-			var err error
-			baseDomain, err = r.reserveDNS(ctx, &cluster)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+	baseDomain, err := r.resolveBaseDomain(ctx, &cluster)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	mc := placement.Spec.ManagementCluster
@@ -316,6 +284,50 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 	return ctrl.Result{RequeueAfter: requeueAfter}, nil
+}
+
+// getBoundPlacement returns the cluster's bound Placement or requests a retry while it is pending.
+func (r *ClusterReconciler) getBoundPlacement(ctx context.Context, cluster *hyperfleetv1alpha1.Cluster) (*hyperfleetv1alpha1.Placement, ctrl.Result, bool, error) {
+	placementName := fmt.Sprintf("%s-placement", cluster.Name)
+	var placement hyperfleetv1alpha1.Placement
+	if err := r.Get(ctx, types.NamespacedName{Namespace: cluster.Namespace, Name: placementName}, &placement); err != nil {
+		if apierrors.IsNotFound(err) {
+			logf.FromContext(ctx).Info("Waiting for Placement", "cluster", cluster.Name)
+			r.setPhase(ctx, cluster, hyperfleetv1alpha1.ClusterPhaseWaitingForPlacement)
+			return nil, ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil
+		}
+		return nil, ctrl.Result{}, false, fmt.Errorf("get placement: %w", err)
+	}
+	if placement.Status.Phase != hyperfleetv1alpha1.PlacementPhaseBound {
+		logf.FromContext(ctx).Info("Placement not yet Bound", "placement", placementName)
+		return nil, ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil
+	}
+	return &placement, ctrl.Result{}, false, nil
+}
+
+// resolveBaseDomain claims a requested customer domain or reserves a generated domain.
+func (r *ClusterReconciler) resolveBaseDomain(ctx context.Context, cluster *hyperfleetv1alpha1.Cluster) (string, error) {
+	requestedBaseDomain := cluster.Spec.HostedCluster.DNS.BaseDomain
+	// Claim a customer-managed DNS reservation before rendering so deletion and
+	// cluster use are serialized through the reservation's resource version.
+	if requestedBaseDomain != "" && isManagedDNSBaseDomain(requestedBaseDomain, r.RegionalConfig.BaseDomainSuffix) {
+		if err := r.claimCustomerDNSReservation(ctx, cluster, requestedBaseDomain); err != nil {
+			return "", fmt.Errorf("claim customer DNS reservation: %w", err)
+		}
+	}
+
+	// Use a customer-provided DNS base domain when configured; otherwise reserve
+	// a generated domain from the regional pool.
+	if cluster.Status.BaseDomain != "" {
+		return cluster.Status.BaseDomain, nil
+	}
+	if requestedBaseDomain != "" {
+		if err := r.persistBaseDomain(ctx, cluster, requestedBaseDomain); err != nil {
+			return "", fmt.Errorf("persist customer DNS base domain: %w", err)
+		}
+		return requestedBaseDomain, nil
+	}
+	return r.reserveDNS(ctx, cluster)
 }
 
 func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *hyperfleetv1alpha1.Cluster) (ctrl.Result, error) {
@@ -725,6 +737,7 @@ func (r *ClusterReconciler) reserveDNS(ctx context.Context, cluster *hyperfleetv
 	return "", fmt.Errorf("failed to reserve a DNS prefix for %s after 5 attempts", cluster.Name)
 }
 
+// persistBaseDomain stores the selected domain in Cluster status with conflict retries.
 func (r *ClusterReconciler) persistBaseDomain(ctx context.Context, cluster *hyperfleetv1alpha1.Cluster, baseDomain string) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var latest hyperfleetv1alpha1.Cluster

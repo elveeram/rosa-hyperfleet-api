@@ -1,6 +1,7 @@
 package render
 
 import (
+	"slices"
 	"testing"
 
 	hyperfleetv1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1"
@@ -361,6 +362,17 @@ func hostedClusterFrom(t *testing.T, resources []Resource) *hypershiftv1beta1.Ho
 	return nil
 }
 
+// renderHostedCluster renders cluster and returns its HostedCluster, failing the
+// test if one was not produced.
+func renderHostedCluster(t *testing.T, cluster *hyperfleetv1alpha1.Cluster) *hypershiftv1beta1.HostedCluster {
+	t.Helper()
+	resources, err := ClusterResources(cluster, false, "f7a3.0.example.com", "")
+	if err != nil {
+		t.Fatalf("ClusterResources: %v", err)
+	}
+	return hostedClusterFrom(t, resources)
+}
+
 // TestHostedClusterControlPlaneOperatorImageAnnotation verifies the CPO image
 // override is stamped as an annotation when set, and omitted when empty.
 func TestHostedClusterControlPlaneOperatorImageAnnotation(t *testing.T) {
@@ -383,5 +395,125 @@ func TestHostedClusterControlPlaneOperatorImageAnnotation(t *testing.T) {
 	if _, ok := hc.Annotations[hypershiftv1beta1.ControlPlaneOperatorImageAnnotation]; ok {
 		t.Errorf("CPO annotation should be absent when override is empty, got %q",
 			hc.Annotations[hypershiftv1beta1.ControlPlaneOperatorImageAnnotation])
+	}
+}
+
+func tagPairs(tags []hypershiftv1beta1.AWSResourceTag) map[string]string {
+	out := make(map[string]string, len(tags))
+	for _, tag := range tags {
+		out[tag.Key] = tag.Value
+	}
+	return out
+}
+
+func TestHostedClusterSystemTagsOnly(t *testing.T) {
+	hc := renderHostedCluster(t, testCluster())
+
+	got := tagPairs(hc.Spec.Platform.AWS.ResourceTags)
+	if len(got) != 2 {
+		t.Fatalf("resourceTags = %v, want only the 2 system tags", got)
+	}
+	if got["red-hat-managed"] != "true" {
+		t.Errorf("red-hat-managed = %q, want %q", got["red-hat-managed"], "true")
+	}
+	if got["kubernetes.io/cluster/abc12345"] != "owned" {
+		t.Errorf("kubernetes.io/cluster/abc12345 = %q, want %q", got["kubernetes.io/cluster/abc12345"], "owned")
+	}
+}
+
+func TestHostedClusterCustomerTags(t *testing.T) {
+	cluster := testCluster()
+	cluster.Spec.Tags = map[string]string{
+		"cost-center": "cc-1234",
+		"environment": "production",
+	}
+
+	hc := renderHostedCluster(t, cluster)
+
+	got := tagPairs(hc.Spec.Platform.AWS.ResourceTags)
+	if got["cost-center"] != "cc-1234" {
+		t.Errorf("cost-center = %q, want %q", got["cost-center"], "cc-1234")
+	}
+	if got["environment"] != "production" {
+		t.Errorf("environment = %q, want %q", got["environment"], "production")
+	}
+	// Customer tags must not displace the system tags.
+	if got["red-hat-managed"] != "true" {
+		t.Errorf("red-hat-managed = %q, want %q", got["red-hat-managed"], "true")
+	}
+	if got["kubernetes.io/cluster/abc12345"] != "owned" {
+		t.Errorf("kubernetes.io/cluster/abc12345 = %q, want %q", got["kubernetes.io/cluster/abc12345"], "owned")
+	}
+}
+
+// A customer must not be able to overwrite the tags the platform relies on for
+// ownership and billing attribution.
+func TestHostedClusterCustomerTagsCannotShadowSystemTags(t *testing.T) {
+	cluster := testCluster()
+	cluster.Spec.Tags = map[string]string{
+		"red-hat-managed":                "false",
+		"kubernetes.io/cluster/abc12345": "shared",
+	}
+
+	hc := renderHostedCluster(t, cluster)
+
+	tags := hc.Spec.Platform.AWS.ResourceTags
+	if len(tags) != 2 {
+		t.Fatalf("resourceTags = %v, want 2 entries with no duplicate keys", tags)
+	}
+	got := tagPairs(tags)
+	if got["red-hat-managed"] != "true" {
+		t.Errorf("red-hat-managed = %q, want %q", got["red-hat-managed"], "true")
+	}
+	if got["kubernetes.io/cluster/abc12345"] != "owned" {
+		t.Errorf("kubernetes.io/cluster/abc12345 = %q, want %q", got["kubernetes.io/cluster/abc12345"], "owned")
+	}
+}
+
+// Map iteration order is random, so renders of the same Cluster must still
+// produce an identical tag slice or the operator would churn the HostedCluster.
+func TestHostedClusterCustomerTagsDeterministicOrder(t *testing.T) {
+	cluster := testCluster()
+	cluster.Spec.Tags = map[string]string{
+		"delta": "4", "alpha": "1", "charlie": "3", "bravo": "2", "echo": "5",
+	}
+
+	first := renderHostedCluster(t, cluster).Spec.Platform.AWS.ResourceTags
+	for i := range 10 {
+		got := renderHostedCluster(t, cluster).Spec.Platform.AWS.ResourceTags
+		if !slices.Equal(got, first) {
+			t.Fatalf("render %d produced %v, want %v", i, got, first)
+		}
+	}
+
+	// System tags first, then customer tags sorted by key.
+	want := []string{
+		"red-hat-managed", "kubernetes.io/cluster/abc12345",
+		"alpha", "bravo", "charlie", "delta", "echo",
+	}
+	for i, key := range want {
+		if first[i].Key != key {
+			t.Errorf("resourceTags[%d].Key = %q, want %q", i, first[i].Key, key)
+		}
+	}
+}
+
+// Tags set on the HostedCluster passthrough take precedence over a colliding
+// customer tag, since the passthrough is service-set.
+func TestHostedClusterCustomerTagsYieldToPassthroughTags(t *testing.T) {
+	cluster := testCluster()
+	cluster.Spec.HostedCluster.Platform.AWS.ResourceTags = []hypershiftv1beta1.AWSResourceTag{
+		{Key: "environment", Value: "service-managed"},
+	}
+	cluster.Spec.Tags = map[string]string{"environment": "customer-set"}
+
+	hc := renderHostedCluster(t, cluster)
+
+	tags := hc.Spec.Platform.AWS.ResourceTags
+	if len(tags) != 3 {
+		t.Fatalf("resourceTags = %v, want 3 entries with no duplicate keys", tags)
+	}
+	if got := tagPairs(tags)["environment"]; got != "service-managed" {
+		t.Errorf("environment = %q, want %q", got, "service-managed")
 	}
 }

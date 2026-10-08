@@ -53,12 +53,29 @@ func ExampleValidator_Validate_serviceSet() {
 	//   field spec.accountId: field is platform-managed (service-set) and cannot be set by customers
 }
 
-// Example of blocking immutable field changes
+// Example of blocking immutable field changes. Customer AWS tags are applied
+// when the cluster's AWS resources are provisioned and cannot be changed
+// afterwards, so spec.tags is marked immutable.
 func ExampleValidator_Validate_immutable() {
-	// Note: The real registry doesn't have immutable fields yet,
-	// but the validator supports them via write-mode markers
-	fmt.Println("Immutable fields can be set on create but not changed on update")
-	// Output: Immutable fields can be set on create but not changed on update
+	v := validation.NewValidator()
+
+	req := &validation.Request{
+		Operation:    validation.OperationUpdate,
+		ResourceType: "Cluster",
+		Fields: map[string]any{
+			"spec.tags": map[string]any{"cost-center": "cc-9999"},
+		},
+		ExistingFields: map[string]any{
+			"spec.tags": map[string]any{"cost-center": "cc-1234"},
+		},
+		FeatureSet: featuregate.Default,
+	}
+
+	err := v.Validate(req)
+	fmt.Printf("Error: %v\n", err)
+	// Output:
+	// Error: validation failed:
+	//   field spec.tags: field is immutable and cannot be changed after creation
 }
 
 // Example of feature gate enforcement
@@ -70,16 +87,16 @@ func ExampleValidator_Validate_featureGate() {
 		Operation:    validation.OperationCreate,
 		ResourceType: "Cluster",
 		Fields: map[string]any{
-			"spec.tags": map[string]string{"team": "platform"},
+			"spec.hostedCluster.configuration.kubelet.registryPullQPS": 10,
 		},
-		FeatureSet: featuregate.Default, // Tags require TechPreview
+		FeatureSet: featuregate.Default, // Advanced kubelet config requires TechPreview
 	}
 
 	err := v.Validate(req)
 	fmt.Printf("Error: %v\n", err)
 	// Output:
 	// Error: validation failed:
-	//   field spec.tags: requires feature gate HyperFleetAutoScaling which is not enabled in Default feature set
+	//   field spec.hostedCluster.configuration.kubelet.registryPullQPS: requires feature gate HyperFleetKubeletAdvanced which is not enabled in Default feature set
 }
 
 // Example of feature gate allowing access
@@ -91,7 +108,7 @@ func ExampleValidator_Validate_featureGateAllowed() {
 		Operation:    validation.OperationCreate,
 		ResourceType: "Cluster",
 		Fields: map[string]any{
-			"spec.tags": map[string]string{"team": "platform"},
+			"spec.hostedCluster.configuration.kubelet.registryPullQPS": 10,
 		},
 		FeatureSet: featuregate.TechPreviewNoUpgrade,
 	}
@@ -100,8 +117,8 @@ func ExampleValidator_Validate_featureGateAllowed() {
 		log.Fatalf("Validation failed: %v", err)
 	}
 
-	fmt.Println("TechPreview customer can use tags")
-	// Output: TechPreview customer can use tags
+	fmt.Println("TechPreview customer can use advanced kubelet config")
+	// Output: TechPreview customer can use advanced kubelet config
 }
 
 // Example of checking field access
@@ -109,20 +126,20 @@ func ExampleValidator_ValidateFieldAccess() {
 	v := validation.NewValidator()
 
 	// Check if a customer can access a gated field
-	err := v.ValidateFieldAccess("Cluster", "spec.tags", featuregate.Default)
+	err := v.ValidateFieldAccess("Cluster", "spec.hostedCluster.configuration.kubelet.registryPullQPS", featuregate.Default)
 	if err != nil {
-		fmt.Println("Default customer cannot access tags field")
+		fmt.Println("Default customer cannot access advanced kubelet config")
 	}
 
 	// TechPreview customer can access it
-	err = v.ValidateFieldAccess("Cluster", "spec.tags", featuregate.TechPreviewNoUpgrade)
+	err = v.ValidateFieldAccess("Cluster", "spec.hostedCluster.configuration.kubelet.registryPullQPS", featuregate.TechPreviewNoUpgrade)
 	if err == nil {
-		fmt.Println("TechPreview customer can access tags field")
+		fmt.Println("TechPreview customer can access advanced kubelet config")
 	}
 
 	// Output:
-	// Default customer cannot access tags field
-	// TechPreview customer can access tags field
+	// Default customer cannot access advanced kubelet config
+	// TechPreview customer can access advanced kubelet config
 }
 
 // Example of getting field metadata

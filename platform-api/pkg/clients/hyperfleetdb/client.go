@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	hyperfleetv1alpha1 "github.com/openshift-online/rosa-hyperfleet-api/api/v1alpha1"
@@ -402,28 +403,45 @@ func (c *Client) ReleaseDNSDomainReservationClaim(ctx context.Context, accountID
 // cluster claims. Repeated calls are allowed so a partially completed delete
 // can retry index and reservation cleanup.
 func (c *Client) BeginDeleteDNSDomainReservation(ctx context.Context, accountID, name string) (*hyperfleetv1alpha1.DNSReservation, error) {
-	var reservation hyperfleetv1alpha1.DNSReservation
-	if err := c.client.Get(ctx, k8stypes.NamespacedName{Namespace: accountNamespace(accountID), Name: name}, &reservation); err != nil {
+	var reservation *hyperfleetv1alpha1.DNSReservation
+	claimed := false
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		reservation = nil
+		claimed = false
+
+		var latest hyperfleetv1alpha1.DNSReservation
+		if err := c.client.Get(ctx, k8stypes.NamespacedName{Namespace: accountNamespace(accountID), Name: name}, &latest); err != nil {
+			return err
+		}
+		if !latest.Spec.UserDefined || latest.Spec.ClusterArch != "hcp" {
+			return apierrors.NewNotFound(dnsReservationGR, name)
+		}
+
+		labels := latest.GetLabels()
+		if labels[hyperfleetv1alpha1.DNSReservationClusterNamespaceLabel] != "" {
+			claimed = true
+			return nil
+		}
+		if labels[hyperfleetv1alpha1.DNSReservationDeletingLabel] != "true" {
+			if labels == nil {
+				labels = make(map[string]string)
+			}
+			labels[hyperfleetv1alpha1.DNSReservationDeletingLabel] = "true"
+			latest.SetLabels(labels)
+			if err := c.client.Update(ctx, &latest); err != nil {
+				return err
+			}
+		}
+		reservation = &latest
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	if !reservation.Spec.UserDefined || reservation.Spec.ClusterArch != "hcp" {
-		return nil, apierrors.NewNotFound(dnsReservationGR, name)
-	}
-	labels := reservation.GetLabels()
-	if clusterNamespace := labels[hyperfleetv1alpha1.DNSReservationClusterNamespaceLabel]; clusterNamespace != "" {
+	if claimed {
 		return nil, apierrors.NewConflict(dnsReservationGR, name, fmt.Errorf("DNS domain is in use by a cluster"))
 	}
-	if labels[hyperfleetv1alpha1.DNSReservationDeletingLabel] != "true" {
-		if labels == nil {
-			labels = make(map[string]string)
-		}
-		labels[hyperfleetv1alpha1.DNSReservationDeletingLabel] = "true"
-		reservation.SetLabels(labels)
-		if err := c.client.Update(ctx, &reservation); err != nil {
-			return nil, err
-		}
-	}
-	return &reservation, nil
+	return reservation, nil
 }
 
 // DeleteDNSDomainReservation deletes a customer-created DNS domain reservation.

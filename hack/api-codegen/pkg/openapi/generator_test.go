@@ -3,10 +3,23 @@ package openapi
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 	"testing"
 )
 
 func TestConfigurationUsesLocalType(t *testing.T) {
+	output := generateConfigurationSchema(t)
+
+	t.Run("cluster configuration", func(t *testing.T) { assertClusterConfiguration(t, output) })
+	t.Run("ingress configuration", func(t *testing.T) { assertIngressConfiguration(t, output) })
+	t.Run("scheduler configuration", func(t *testing.T) { assertSchedulerConfiguration(t, output) })
+	t.Run("proxy configuration", func(t *testing.T) { assertProxyConfiguration(t, output) })
+	t.Run("kubelet configuration", func(t *testing.T) { assertKubeletConfiguration(t, output) })
+	t.Run("cluster autoscaling", func(t *testing.T) { assertClusterAutoscaling(t, output) })
+}
+
+func generateConfigurationSchema(t *testing.T) schemaOutput {
+	t.Helper()
 	tmpFile := t.TempDir() + "/openapi.json"
 
 	// Resolve the v1alpha1 package relative to this test file's location
@@ -33,27 +46,84 @@ func TestConfigurationUsesLocalType(t *testing.T) {
 	if err := json.Unmarshal(data, &output); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
+	return output
+}
 
+func assertClusterConfiguration(t *testing.T, output schemaOutput) {
+	t.Helper()
 	// ClusterConfiguration must exist as its own definition (from the local type)
 	cc, ok := output.Definitions["ClusterConfiguration"]
 	if !ok {
 		t.Fatal("ClusterConfiguration definition not found")
 	}
 
-	// The local type's markers expose proxy, scheduler, kubelet, and machineConfig.
+	// The local type's markers expose ingress, proxy, scheduler, kubelet, and machineConfig.
 	// If the upstream hypershiftv1beta1.ClusterConfiguration were used instead,
 	// all 10 sub-config fields would be present (no hidden markers).
-	for _, visible := range []string{"proxy", "scheduler", "kubelet", "machineConfig"} {
+	for _, visible := range []string{"ingress", "proxy", "scheduler", "kubelet", "machineConfig"} {
 		if _, found := cc.Properties[visible]; !found {
 			t.Errorf("expected visible property %q in ClusterConfiguration", visible)
 		}
 	}
-	for _, hidden := range []string{"apiServer", "authentication", "featureGate", "image", "ingress", "network", "oauth"} {
+	for _, hidden := range []string{"apiServer", "authentication", "featureGate", "image", "network", "oauth"} {
 		if _, found := cc.Properties[hidden]; found {
 			t.Errorf("property %q should be hidden in ClusterConfiguration (local markers not applied?)", hidden)
 		}
 	}
+}
 
+func assertIngressConfiguration(t *testing.T, output schemaOutput) {
+	t.Helper()
+	// IngressConfiguration exposes only customer-configurable component routes.
+	ic, ok := output.Definitions["IngressConfiguration"]
+	if !ok {
+		t.Fatal("IngressConfiguration definition not found")
+	}
+	componentRoutes, found := ic.Properties["componentRoutes"]
+	if !found {
+		t.Error("componentRoutes property not found in IngressConfiguration")
+	} else {
+		if componentRoutes.MaxItems == nil || *componentRoutes.MaxItems != 2 {
+			t.Errorf("componentRoutes maxItems = %v, want 2", componentRoutes.MaxItems)
+		}
+		if componentRoutes.XListType == nil || *componentRoutes.XListType != "map" {
+			t.Errorf("componentRoutes list type = %v, want map", componentRoutes.XListType)
+		}
+		if got, want := componentRoutes.XListMapKeys, []string{"namespace", "name"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("componentRoutes list map keys = %v, want %v", got, want)
+		}
+	}
+	crc, ok := output.Definitions["ComponentRouteConfiguration"]
+	if !ok {
+		t.Fatal("ComponentRouteConfiguration definition not found")
+	}
+	for _, visible := range []string{"namespace", "name", "hostname", "servingCertKeyPairSecret"} {
+		if _, found := crc.Properties[visible]; !found {
+			t.Errorf("expected visible property %q in ComponentRouteConfiguration", visible)
+		}
+	}
+	if _, found := crc.Properties["labels"]; found {
+		t.Error("labels should not be exposed in ComponentRouteConfiguration")
+	}
+	for field, allowedValues := range map[string]map[string]bool{
+		"namespace": {`"openshift-console"`: true},
+		"name": {
+			`"console"`:   true,
+			`"downloads"`: true,
+		},
+	} {
+		property := crc.Properties[field]
+		for _, value := range property.Enum {
+			delete(allowedValues, string(value.Raw))
+		}
+		if len(allowedValues) != 0 {
+			t.Errorf("%s enum is missing values: %v", field, allowedValues)
+		}
+	}
+}
+
+func assertSchedulerConfiguration(t *testing.T, output schemaOutput) {
+	t.Helper()
 	// SchedulerConfiguration exposes only the supported scheduler profile choice.
 	sc, ok := output.Definitions["SchedulerConfiguration"]
 	if !ok {
@@ -74,7 +144,10 @@ func TestConfigurationUsesLocalType(t *testing.T) {
 	if len(wantProfiles) != 0 {
 		t.Errorf("profile enum is missing values: %v", wantProfiles)
 	}
+}
 
+func assertProxyConfiguration(t *testing.T, output schemaOutput) {
+	t.Helper()
 	// ProxyConfiguration exposes user-settable proxy fields but keeps the
 	// service-managed fields out of the generated schema.
 	pc, ok := output.Definitions["ProxyConfiguration"]
@@ -91,7 +164,10 @@ func TestConfigurationUsesLocalType(t *testing.T) {
 			t.Errorf("property %q should be hidden in ProxyConfiguration", hidden)
 		}
 	}
+}
 
+func assertKubeletConfiguration(t *testing.T, output schemaOutput) {
+	t.Helper()
 	// KubeletConfig must retain its visible fields (nested path test)
 	kc, ok := output.Definitions["KubeletConfig"]
 	if !ok {
@@ -106,6 +182,18 @@ func TestConfigurationUsesLocalType(t *testing.T) {
 		if _, found := kc.Properties[hidden]; found {
 			t.Errorf("property %q should be hidden in KubeletConfig", hidden)
 		}
+	}
+}
+
+func assertClusterAutoscaling(t *testing.T, output schemaOutput) {
+	t.Helper()
+	// Cluster autoscaling is exposed from the HostedCluster passthrough.
+	hc, ok := output.Definitions["HostedClusterSpecPassthrough"]
+	if !ok {
+		t.Fatal("HostedClusterSpecPassthrough definition not found")
+	}
+	if _, found := hc.Properties["autoscaling"]; !found {
+		t.Error("autoscaling property not found in HostedClusterSpecPassthrough")
 	}
 }
 

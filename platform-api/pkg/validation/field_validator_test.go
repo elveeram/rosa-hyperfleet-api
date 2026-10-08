@@ -170,6 +170,80 @@ func TestValidateUpdate_ValidatesAdditionalTrustBundleAndAllowsClear(t *testing.
 	}
 }
 
+func TestValidateCreate_FeatureGateIgnoresEmptyValue(t *testing.T) {
+	v := newTestValidator(map[string]registry.FieldMeta{
+		"spec.autoscaling": {
+			FieldPath:   "spec.autoscaling",
+			WriteMode:   registry.Mutable,
+			FeatureGate: "HyperFleetAutoScaling",
+		},
+	})
+
+	err := v.ValidateCreate(map[string]any{
+		"autoscaling": map[string]any{},
+	}, featuregate.Default)
+	if err != nil {
+		t.Fatalf("expected empty feature-gated field to be treated as unset, got %v", err)
+	}
+}
+
+func TestValidateCreate_FeatureGateRejectsConfiguredValue(t *testing.T) {
+	v := newTestValidator(map[string]registry.FieldMeta{
+		"spec.autoscaling": {
+			FieldPath:   "spec.autoscaling",
+			WriteMode:   registry.Mutable,
+			FeatureGate: "HyperFleetAutoScaling",
+		},
+	})
+
+	err := v.ValidateCreate(map[string]any{
+		"autoscaling": map[string]any{"maxNodesTotal": 10},
+	}, featuregate.Default)
+	if err == nil {
+		t.Fatal("expected configured feature-gated field to be rejected")
+	}
+}
+
+func TestValidateCreate_FeatureGateRejectsScalarZeroValues(t *testing.T) {
+	for name, value := range map[string]any{
+		"false":        false,
+		"zero":         0,
+		"empty string": "",
+	} {
+		t.Run(name, func(t *testing.T) {
+			v := newTestValidator(map[string]registry.FieldMeta{
+				"spec.setting": {
+					FieldPath:   "spec.setting",
+					WriteMode:   registry.Mutable,
+					FeatureGate: "HyperFleetKubeletAdvanced",
+				},
+			})
+
+			errs := v.ValidateCreate(map[string]any{"setting": value}, featuregate.Default)
+			if errs == nil {
+				t.Fatalf("expected feature-gated scalar zero value %#v to be rejected", value)
+			}
+		})
+	}
+}
+
+func TestValidateCreate_FeatureGateRejectsObjectContainingZeroValue(t *testing.T) {
+	v := newTestValidator(map[string]registry.FieldMeta{
+		"spec.kubelet": {
+			FieldPath:   "spec.kubelet",
+			WriteMode:   registry.Mutable,
+			FeatureGate: "HyperFleetKubeletAdvanced",
+		},
+	})
+
+	errs := v.ValidateCreate(map[string]any{
+		"kubelet": map[string]any{"serializeImagePulls": false},
+	}, featuregate.Default)
+	if errs == nil {
+		t.Fatal("expected feature-gated object containing an explicit zero value to be rejected")
+	}
+}
+
 func TestValidateCreate_AllowsImmutableFields(t *testing.T) {
 	v := newTestValidator(map[string]registry.FieldMeta{
 		"spec.fips": {FieldPath: "spec.fips", WriteMode: registry.Immutable},

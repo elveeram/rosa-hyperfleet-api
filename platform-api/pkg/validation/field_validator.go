@@ -98,7 +98,10 @@ func (v *FieldValidator) validate(fields, existingFields map[string]any, op Oper
 			continue
 		}
 
-		if meta.FeatureGate != "" {
+		// Value-type fields with omitempty can still be serialized as empty
+		// objects. Treat only a literal empty object as unset; scalar zero values
+		// can be meaningful configuration and must still require their gate.
+		if meta.FeatureGate != "" && !isEmptyObject(fields[fieldPath]) {
 			if !featuregate.IsGateEnabled(meta.FeatureGate, fs) {
 				errs = append(errs, &ValidationError{
 					Field:  fieldPath,
@@ -122,6 +125,11 @@ func (v *FieldValidator) validate(fields, existingFields map[string]any, op Oper
 		return errs
 	}
 	return nil
+}
+
+func isEmptyObject(v any) bool {
+	object, ok := v.(map[string]any)
+	return ok && len(object) == 0
 }
 
 func isStructuralContainer(fieldPath string, fieldMetaMap map[string]registry.FieldMeta) bool {
