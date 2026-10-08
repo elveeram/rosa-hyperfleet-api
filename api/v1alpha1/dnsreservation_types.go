@@ -21,6 +21,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	// DNSReservationClusterNamespaceLabel records the cluster that claimed a
+	// customer-created DNS reservation.
+	DNSReservationClusterNamespaceLabel = "hyperfleet.io/cluster-namespace"
+	// DNSReservationDeletingLabel fences new claims while DNS reservation
+	// cleanup is in progress.
+	DNSReservationDeletingLabel = "hyperfleet.io/dns-domain-deleting"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced,shortName=hfdns
 // +kubebuilder:printcolumn:name="BaseDomain",type=string,JSONPath=".spec.baseDomain"

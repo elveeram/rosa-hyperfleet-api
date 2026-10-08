@@ -38,6 +38,9 @@ func ClusterResources(cluster *hyperfleetv1alpha1.Cluster, oidcSigningKeyExterna
 		hc,
 		sshKey(clusterID, ns),
 	}
+	if cluster.Spec.AdditionalTrustBundle != nil {
+		resources = append(resources, additionalTrustBundle(clusterID, ns, *cluster.Spec.AdditionalTrustBundle))
+	}
 
 	if oidcSigningKeyExternal {
 		resources = append(resources, oidcSigningKeySecret(cluster.Spec.AccountID, cluster.Spec.OidcConfigID, clusterID, ns))
@@ -128,6 +131,27 @@ func clusterConfig(clusterID, clusterName, ns string) Resource {
 				"cluster_id":   clusterID,
 				"cluster_name": clusterName,
 			},
+		},
+	}
+}
+
+const additionalTrustBundleName = "additional-trust-bundle"
+
+func additionalTrustBundle(clusterID, ns, bundle string) Resource {
+	return Resource{
+		Group: "", Version: "v1", Resource: "configmaps",
+		Name: additionalTrustBundleName, Namespace: ns,
+		Object: &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      additionalTrustBundleName,
+				Namespace: ns,
+				Labels: map[string]string{
+					"hyperfleet.io/cluster-id":    clusterID,
+					"hyperfleet.io/resource-type": "additional-trust-bundle",
+				},
+			},
+			Data: map[string]string{"ca-bundle.crt": bundle},
 		},
 	}
 }
@@ -246,6 +270,13 @@ func hostedCluster(cluster *hyperfleetv1alpha1.Cluster, oidcSigningKeyExternal b
 		hcSpec.Configuration = apiServerConfiguration()
 	} else {
 		hcSpec.Configuration.APIServer = apiServerConfiguration().APIServer
+	}
+	if cluster.Spec.AdditionalTrustBundle != nil {
+		if *cluster.Spec.AdditionalTrustBundle == "" {
+			hcSpec.AdditionalTrustBundle = nil
+		} else {
+			hcSpec.AdditionalTrustBundle = &corev1.LocalObjectReference{Name: additionalTrustBundleName}
+		}
 	}
 
 	// --- Defaults (only set if customer didn't specify) ---

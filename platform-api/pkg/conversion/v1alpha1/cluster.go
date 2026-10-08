@@ -20,12 +20,24 @@ func ProjectCluster(crd *v1alpha1.Cluster) *rest.Cluster {
 
 	spec := projectClusterSpec(crd.Spec)
 	status := projectClusterStatus(crd.Status)
-	return &rest.Cluster{
+	out := &rest.Cluster{
 		TypeMeta:   crd.TypeMeta,
 		ObjectMeta: crd.ObjectMeta,
 		Spec:       spec,
 		Status:     status,
 	}
+	if config := crd.Spec.HostedCluster.Configuration; config != nil && config.Proxy != nil {
+		out.Proxy = &rest.ClusterProxy{
+			HTTPProxy:  config.Proxy.HTTPProxy,
+			HTTPSProxy: config.Proxy.HTTPSProxy,
+			NoProxy:    config.Proxy.NoProxy,
+		}
+	}
+	if out.Spec.AdditionalTrustBundle != nil && *out.Spec.AdditionalTrustBundle != "" {
+		redacted := "REDACTED"
+		out.Spec.AdditionalTrustBundle = &redacted
+	}
+	return out
 }
 
 func projectClusterSpec(crd v1alpha1.ClusterSpec) rest.ClusterSpec {

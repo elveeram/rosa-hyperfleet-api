@@ -2074,6 +2074,12 @@ components:
           metadata.Name is the human-readable cluster name; metadata.Namespace is the cluster UUID.
           The owning AWS account is stored as the label hyperfleet.io/account-id.
       properties:
+          additionalTrustBundle:
+              description: |-
+                  AdditionalTrustBundle is a PEM-encoded CA bundle used by the cluster.
+                  The Platform API accepts this value on writes and redacts it in its responses.
+              maxLength: 1.048576e+06
+              type: string
           controlPlaneUpgradePolicy:
               description: ControlPlaneUpgradePolicy is the control plane upgrade policy defined by the user.
               properties:
@@ -2220,12 +2226,32 @@ components:
               type: string
           metadata:
               type: object
+          proxy:
+              description: Proxy is a read-only projection of spec.hostedCluster.configuration.proxy.
+              properties:
+                  http_proxy:
+                      description: HTTPProxy is the URL of the proxy for HTTP requests.
+                      type: string
+                  https_proxy:
+                      description: HTTPSProxy is the URL of the proxy for HTTPS requests.
+                      type: string
+                  no_proxy:
+                      description: NoProxy lists hosts, domains, IP addresses, or CIDRs excluded from proxying.
+                      type: string
+              readOnly: true
+              type: object
           spec:
               description: |-
                   ClusterSpec defines the desired state of a ROSA HCP cluster.
                   metadata.Name is the human-readable cluster name; metadata.Namespace is the cluster UUID.
                   The owning AWS account is stored as the label hyperfleet.io/account-id.
               properties:
+                  additionalTrustBundle:
+                      description: |-
+                          AdditionalTrustBundle is a PEM-encoded CA bundle used by the cluster.
+                          The Platform API accepts this value on writes and redacts it in its responses.
+                      maxLength: 1.048576e+06
+                      type: string
                   controlPlaneUpgradePolicy:
                       description: ControlPlaneUpgradePolicy is the control plane upgrade policy defined by the user.
                       properties:
@@ -4627,12 +4653,32 @@ components:
                           type: string
                       metadata:
                           type: object
+                      proxy:
+                          description: Proxy is a read-only projection of spec.hostedCluster.configuration.proxy.
+                          properties:
+                              http_proxy:
+                                  description: HTTPProxy is the URL of the proxy for HTTP requests.
+                                  type: string
+                              https_proxy:
+                                  description: HTTPSProxy is the URL of the proxy for HTTPS requests.
+                                  type: string
+                              no_proxy:
+                                  description: NoProxy lists hosts, domains, IP addresses, or CIDRs excluded from proxying.
+                                  type: string
+                          readOnly: true
+                          type: object
                       spec:
                           description: |-
                               ClusterSpec defines the desired state of a ROSA HCP cluster.
                               metadata.Name is the human-readable cluster name; metadata.Namespace is the cluster UUID.
                               The owning AWS account is stored as the label hyperfleet.io/account-id.
                           properties:
+                              additionalTrustBundle:
+                                  description: |-
+                                      AdditionalTrustBundle is a PEM-encoded CA bundle used by the cluster.
+                                      The Platform API accepts this value on writes and redacts it in its responses.
+                                  maxLength: 1.048576e+06
+                                  type: string
                               controlPlaneUpgradePolicy:
                                   description: ControlPlaneUpgradePolicy is the control plane upgrade policy defined by the user.
                                   properties:

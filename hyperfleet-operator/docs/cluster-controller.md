@@ -83,7 +83,10 @@ create-or-adopt details.
 For a customer-managed DNS domain, set `spec.hostedCluster.dns.baseDomain` on
 the Cluster. The controller persists that value as `status.baseDomain` and
 uses it when rendering the HostedCluster, preserving the supplied DNS prefix
-and zone IDs. If it is empty, the generated reservation flow above is used.
+and zone IDs. A domain under the configured regional suffix must have an
+account-owned HCP DNS-domain reservation; the reservation is atomically claimed
+by the cluster and released when the cluster is deleted. If `baseDomain` is
+empty, the generated reservation flow above is used.
 The Platform API exposes HCP DNS-domain reservations at
 `/api/v0/dns_domains` and the ROSA-compatible
 `/api/clusters_mgmt/v1/dns_domains` path. Configure the API's

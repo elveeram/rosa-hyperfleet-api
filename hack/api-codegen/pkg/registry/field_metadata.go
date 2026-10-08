@@ -30,6 +30,12 @@ var FieldRegistry = TypedFieldRegistry{
 			OwnerType: "Cluster",
 			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
 		},
+		"spec.additionalTrustBundle": {
+			FieldPath: "spec.additionalTrustBundle",
+			WriteMode: Mutable,
+			OwnerType: "Cluster",
+			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
+		},
 		"spec.creatorARN": {
 			FieldPath: "spec.creatorARN",
 			WriteMode: ServiceSet,
@@ -339,7 +345,7 @@ var FieldRegistry = TypedFieldRegistry{
 		},
 		"spec.hostedCluster.configuration.proxy": {
 			FieldPath: "spec.hostedCluster.configuration.proxy",
-			WriteMode: ServiceSet,
+			WriteMode: Mutable,
 			OwnerType: "Cluster",
 			OwnerGVK:  "hyperfleet.io/v1alpha1.Cluster",
 		},
@@ -872,7 +878,7 @@ var FieldRegistry = TypedFieldRegistry{
 		},
 		"proxy": {
 			FieldPath: "proxy",
-			WriteMode: ServiceSet,
+			WriteMode: Mutable,
 			OwnerType: "ClusterConfiguration",
 			OwnerGVK:  "",
 		},

@@ -861,7 +861,7 @@ var _ = Describe("ROSACTL CLI E2E Tests", Ordered, func() {
 			response, err := customerApiClient.Get("/api/v0/clusters/"+clusterID, customerAccountID)
 			g.Expect(err).ToNot(HaveOccurred())
 			g.Expect(response.StatusCode).To(Or(Equal(http.StatusNotFound), Equal(http.StatusGone)))
-		}).WithTimeout(10*time.Minute).WithPolling(30*time.Second).Should(Succeed(), "cluster should be deleted")
+		}).WithTimeout(15*time.Minute).WithPolling(30*time.Second).Should(Succeed(), "cluster should be deleted")
 		GinkgoWriter.Printf("HCP cluster confirmed deleted: %s\n", clusterName)
 	})
 

@@ -12,6 +12,11 @@ resources:
               goType: string
               operations:
                 - read
+            - path: spec.additionalTrustBundle
+              goType: string
+              operations:
+                - create
+                - update
             - path: spec.deleteProtection
               goType: boolean
               operations:

@@ -12,7 +12,7 @@ The standard reconciler pattern works unchanged:
 - `Create()`, `Update()`, `Delete()`, `Status().Update()`
 - Finalizers, labels, annotations
 - Generation tracking
-- Optimistic concurrency via `ResourceVersion` (409 Conflict on stale writes)
+- Optimistic concurrency via `ResourceVersion` and UID (409 Conflict on stale versions or object incarnations)
 - Health and readiness checks
 - `apierrors.IsNotFound()` / `IsConflict()` / `IsAlreadyExists()`
 
@@ -25,7 +25,9 @@ These features work but behave differently from standard controller-runtime agai
 | What                              | Standard kube                                           | pgruntime                                                                                                                      |
 | --------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Read consistency                  | `GetClient()` reads from cache — can be seconds stale   | `GetClient()` reads from DB — always current                                                                                   |
-| No-op writes                      | May or may not bump `ResourceVersion`                   | Content-equal writes suppressed: no version bump, no event                                                                     |
+| No-op writes                      | May or may not bump `ResourceVersion`                   | Content-equal updates with current UID/version are suppressed; duplicate Create always returns `AlreadyExists`                 |
+| ResourceVersion                   | Global etcd revision; never reused across objects       | Per-object `object_version`, reset to 1 when a name is recreated. Only meaningful within one incarnation, so update/status writes and version-checked deletes also carry `metadata.uid`. List ResourceVersions are DB watermarks and are not comparable to object ResourceVersions |
+| UID on writes                     | UID may be omitted from the request object              | `Update()` and `Status().Update()` require `metadata.uid`; `Delete()` requires it when the object has a `ResourceVersion`. Missing UID returns `BadRequest` (400); deleting by name without a `ResourceVersion` still works |
 | Delete lifecycle                  | Object removed immediately after finalizers clear       | Tombstone row persists until compaction (24h default). Invisible to callers — `Get()` returns NotFound, `List()` excludes them |
 | Horizontal scaling                | Leader election (1 active replica) or external sharding | Multiple replicas via namespace-hash sharding (`Options.Shard`); direct client always sees full dataset                        |
 | Event delivery                    | HTTP/2 streaming watch                                  | Poll (5s baseline) with `pg_notify` doorbell (~100ms typical delivery)                                                         |
@@ -57,7 +59,7 @@ These features return an error, panic, or are not available. If you're porting a
 | `DryRun` option                   | Returns error                | Don't use                                                 |
 | `GracePeriodSeconds` option       | Returns error                | Handle graceful shutdown in your reconciler               |
 | `PropagationPolicy` option        | Returns error                | Clean up children via finalizers                          |
-| `Preconditions` option            | Returns error                | Use `ResourceVersion` on the object                       |
+| `Preconditions` option            | Returns error                | Set `ResourceVersion` and UID on the object instead       |
 | `GenerateName`                    | Returns error                | Set `Name` explicitly before `Create()`                   |
 | Event recording                   | Not available                | Use structured logging or Prometheus metrics              |
 | Admission webhooks                | Not available                | Validate inputs in your reconciler                        |

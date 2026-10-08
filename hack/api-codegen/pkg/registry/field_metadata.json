@@ -7,6 +7,12 @@
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
   {
+    "fieldPath": "spec.additionalTrustBundle",
+    "writeMode": "mutable",
+    "ownerType": "Cluster",
+    "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
+  },
+  {
     "fieldPath": "spec.creatorARN",
     "writeMode": "service-set",
     "hidden": true,
@@ -315,7 +321,7 @@
   },
   {
     "fieldPath": "spec.hostedCluster.configuration.proxy",
-    "writeMode": "service-set",
+    "writeMode": "mutable",
     "ownerType": "Cluster",
     "ownerGVK": "hyperfleet.io/v1alpha1.Cluster"
   },
@@ -846,7 +852,7 @@
   },
   {
     "fieldPath": "proxy",
-    "writeMode": "service-set",
+    "writeMode": "mutable",
     "ownerType": "ClusterConfiguration",
     "ownerGVK": ""
   },

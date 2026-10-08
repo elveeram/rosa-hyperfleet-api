@@ -52,6 +52,13 @@ func main() {
 		log.Fatalf("parsing generated JSON: %v", err)
 	}
 
+	var specDoc map[string]any
+	if err := yaml.Unmarshal(specData, &specDoc); err != nil {
+		log.Fatalf("parsing spec YAML: %v", err)
+	}
+	components, _ := specDoc["components"].(map[string]any)
+	existingSchemas, _ := components["schemas"].(map[string]any)
+
 	schemaList := splitCSV(schemas)
 
 	merged := 0
@@ -61,6 +68,12 @@ func main() {
 		if !ok {
 			log.Printf("warning: schema %q not found in generated output, skipping", name)
 			continue
+		}
+		if existingSchema, ok := existingSchemas[name]; ok {
+			raw, err = preserveReadOnly(raw, existingSchema)
+			if err != nil {
+				log.Fatalf("preserving read-only properties in %s: %v", name, err)
+			}
 		}
 
 		yamlBlock, err := jsonSchemaToYAML(raw, 6)
@@ -89,6 +102,45 @@ func main() {
 	}
 
 	fmt.Printf("Merged %d schemas into %s\n", merged, outputFile)
+}
+
+// preserveReadOnly carries OpenAPI readOnly annotations from the existing
+// schema into regenerated schemas. Kubernetes' JSONSchemaProps type does not
+// represent readOnly, so the Go-type generator cannot emit this OpenAPI-only
+// metadata itself.
+func preserveReadOnly(generated json.RawMessage, existing any) (json.RawMessage, error) {
+	var generatedSchema any
+	if err := json.Unmarshal(generated, &generatedSchema); err != nil {
+		return nil, err
+	}
+	preserveReadOnlyProperties(existing, generatedSchema)
+	return json.Marshal(generatedSchema)
+}
+
+func preserveReadOnlyProperties(existing, generated any) {
+	switch generatedValue := generated.(type) {
+	case map[string]any:
+		existingValue, ok := existing.(map[string]any)
+		if !ok {
+			return
+		}
+		if readOnly, ok := existingValue["readOnly"].(bool); ok && readOnly {
+			generatedValue["readOnly"] = true
+		}
+		for key, generatedChild := range generatedValue {
+			if existingChild, ok := existingValue[key]; ok {
+				preserveReadOnlyProperties(existingChild, generatedChild)
+			}
+		}
+	case []any:
+		existingValue, ok := existing.([]any)
+		if !ok {
+			return
+		}
+		for i := 0; i < len(generatedValue) && i < len(existingValue); i++ {
+			preserveReadOnlyProperties(existingValue[i], generatedValue[i])
+		}
+	}
 }
 
 // replaceSchemaBlock finds a schema definition block in the YAML by looking

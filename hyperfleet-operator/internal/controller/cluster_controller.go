@@ -21,7 +21,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -55,7 +57,7 @@ const (
 	// accountIDLabel records the AWS account that owns a resource.
 	accountIDLabel = "hyperfleet.io/account-id"
 	// clusterNamespaceLabel records the namespace of the Cluster that owns a resource.
-	clusterNamespaceLabel = "hyperfleet.io/cluster-namespace"
+	clusterNamespaceLabel = hyperfleetv1alpha1.DNSReservationClusterNamespaceLabel
 	// accountNSPrefix prefixes the per-account namespace name.
 	accountNSPrefix = "account-"
 )
@@ -122,6 +124,7 @@ func (r *ClusterReconciler) releaseOidcConfigClaim(ctx context.Context, cluster 
 	})
 }
 
+// Reconcile reserves or claims the cluster's DNS domain before rendering resources.
 func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
@@ -168,12 +171,21 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
+	// Claim a customer-managed DNS reservation before rendering so deletion and
+	// cluster use are serialized through the reservation's resource version.
+	requestedBaseDomain := cluster.Spec.HostedCluster.DNS.BaseDomain
+	if requestedBaseDomain != "" && isManagedDNSBaseDomain(requestedBaseDomain, r.RegionalConfig.BaseDomainSuffix) {
+		if err := r.claimCustomerDNSReservation(ctx, &cluster, requestedBaseDomain); err != nil {
+			return ctrl.Result{}, fmt.Errorf("claim customer DNS reservation: %w", err)
+		}
+	}
+
 	// Use a customer-provided DNS base domain when configured; otherwise reserve
 	// a generated domain from the regional pool.
 	baseDomain := cluster.Status.BaseDomain
 	if baseDomain == "" {
-		if requested := cluster.Spec.HostedCluster.DNS.BaseDomain; requested != "" {
-			baseDomain = requested
+		if requestedBaseDomain != "" {
+			baseDomain = requestedBaseDomain
 			if err := r.persistBaseDomain(ctx, &cluster, baseDomain); err != nil {
 				return ctrl.Result{}, fmt.Errorf("persist customer DNS base domain: %w", err)
 			}
@@ -450,6 +462,7 @@ func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *hyperf
 	return r.cleanupAndRemoveFinalizer(ctx, cluster)
 }
 
+// cleanupAndRemoveFinalizer releases owned reservations and removes the cluster finalizer.
 func (r *ClusterReconciler) cleanupAndRemoveFinalizer(ctx context.Context, cluster *hyperfleetv1alpha1.Cluster) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
@@ -471,6 +484,17 @@ func (r *ClusterReconciler) cleanupAndRemoveFinalizer(ctx context.Context, clust
 		return ctrl.Result{}, fmt.Errorf("list dns reservations for cleanup: %w", err)
 	}
 	for i := range dnsList.Items {
+		if dnsList.Items[i].Spec.UserDefined {
+			labels := dnsList.Items[i].GetLabels()
+			if labels[clusterNamespaceLabel] == cluster.Namespace {
+				delete(labels, clusterNamespaceLabel)
+				dnsList.Items[i].SetLabels(labels)
+				if err := r.Update(ctx, &dnsList.Items[i]); err != nil {
+					return ctrl.Result{}, fmt.Errorf("release customer DNS reservation claim: %w", err)
+				}
+			}
+			continue
+		}
 		if err := r.Delete(ctx, &dnsList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, fmt.Errorf("delete dns reservation: %w", err)
 		}
@@ -710,6 +734,49 @@ func (r *ClusterReconciler) persistBaseDomain(ctx context.Context, cluster *hype
 		latest.Status.BaseDomain = baseDomain
 		return r.Status().Update(ctx, &latest)
 	})
+}
+
+// isManagedDNSBaseDomain reports whether domain belongs to the configured regional suffix.
+func isManagedDNSBaseDomain(domain, suffix string) bool {
+	domain = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(domain)), ".")
+	suffix = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(suffix)), ".")
+	return suffix != "" && (domain == suffix || strings.HasSuffix(domain, "."+suffix))
+}
+
+// claimCustomerDNSReservation atomically claims a customer-created reservation
+// for this cluster. It is idempotent for an existing claim by the same cluster.
+func (r *ClusterReconciler) claimCustomerDNSReservation(ctx context.Context, cluster *hyperfleetv1alpha1.Cluster, baseDomain string) error {
+	var reservations hyperfleetv1alpha1.DNSReservationList
+	if err := r.List(ctx, &reservations, client.InNamespace(accountNamespace(cluster.Spec.AccountID))); err != nil {
+		return fmt.Errorf("list account DNS reservations failed (%T)", err)
+	}
+	for i := range reservations.Items {
+		reservation := &reservations.Items[i]
+		if !strings.EqualFold(strings.TrimSuffix(reservation.Spec.BaseDomain, "."), strings.TrimSuffix(baseDomain, ".")) ||
+			!reservation.Spec.UserDefined || reservation.Spec.ClusterArch != "hcp" {
+			continue
+		}
+		labels := reservation.GetLabels()
+		if labels[hyperfleetv1alpha1.DNSReservationDeletingLabel] == "true" {
+			return errors.New("DNS reservation is being deleted")
+		}
+		if owner := labels[clusterNamespaceLabel]; owner != "" {
+			if owner == cluster.Namespace {
+				return nil
+			}
+			return errors.New("DNS reservation is already claimed by another cluster")
+		}
+		if labels == nil {
+			labels = make(map[string]string)
+		}
+		labels[clusterNamespaceLabel] = cluster.Namespace
+		reservation.SetLabels(labels)
+		if err := r.Update(ctx, reservation); err != nil {
+			return fmt.Errorf("update DNS reservation claim failed (%T)", err)
+		}
+		return nil
+	}
+	return errors.New("no account-owned HCP DNS reservation found for the requested domain")
 }
 
 // tryReserveDNS attempts a two-phase creation: first an Index in the shard's

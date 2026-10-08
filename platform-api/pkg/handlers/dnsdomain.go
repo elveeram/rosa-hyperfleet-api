@@ -21,18 +21,22 @@ import (
 )
 
 const (
-	dnsDomainArchHCP        = "hcp"
-	dnsDomainShard          = "0"
-	dnsDomainShardNamespace = "dns-shard-0-reservations"
-	dnsDomainUserLabel      = "hyperfleet.io/user-defined-dns-domain"
+	dnsDomainArchHCP               = "hcp"
+	dnsDomainShard                 = "0"
+	dnsDomainShardNamespace        = "dns-shard-0-reservations"
+	dnsDomainUserLabel             = "hyperfleet.io/user-defined-dns-domain"
+	dnsDomainGeneratedPrefixLength = 8 + 1 + len(dnsDomainShard) + 1
+	dnsMaxNameLength               = 253
 )
 
+// DNSDomainHandler serves account-scoped HCP DNS-domain reservation operations.
 type DNSDomainHandler struct {
 	db               *hyperfleetdb.Client
 	baseDomainSuffix string
 	logger           *slog.Logger
 }
 
+// NewDNSDomainHandler creates the HCP DNS-domain handler for an account API.
 func NewDNSDomainHandler(db *hyperfleetdb.Client, baseDomainSuffix string, logger *slog.Logger) *DNSDomainHandler {
 	return &DNSDomainHandler{db: db, baseDomainSuffix: strings.ToLower(strings.Trim(strings.TrimSpace(baseDomainSuffix), ".")), logger: logger}
 }
@@ -58,7 +62,7 @@ func (h *DNSDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 	reservations, err := h.db.ListDNSDomainReservations(r.Context(), accountID)
 	if err != nil {
-		h.logger.Error("failed to list DNS domains", "error", err, "account_id", accountID)
+		h.logger.Error("failed to list DNS domains", "error_type", fmt.Sprintf("%T", err), "account_id", redact(accountID))
 		writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-LIST-001", "Failed to list DNS domains", h.logger)
 		return
 	}
@@ -79,14 +83,14 @@ func (h *DNSDomainHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	response := dnsDomainListResponse{Kind: "DNSDomainList", Page: 1, Size: len(items), Total: len(items), Items: items}
 	if err := api.Write(w, http.StatusOK, response); err != nil {
-		h.logger.Error("failed to write DNS domain list", "error", err)
+		h.logger.Error("failed to write DNS domain list", "error_type", fmt.Sprintf("%T", err))
 	}
 }
 
 // Create handles POST /api/v0/dns_domains and the OCM-compatible DNS domain path.
 func (h *DNSDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
-	if problems := utilvalidation.IsDNS1123Subdomain(h.baseDomainSuffix); len(problems) != 0 {
+	if problems := utilvalidation.IsDNS1123Subdomain(h.baseDomainSuffix); len(problems) != 0 || len(h.baseDomainSuffix)+dnsDomainGeneratedPrefixLength > dnsMaxNameLength {
 		writeDNSDomainError(w, http.StatusServiceUnavailable, "DNSDOMAINS-CREATE-001", "DNS domain suffix is not configured", h.logger)
 		return
 	}
@@ -110,7 +114,7 @@ func (h *DNSDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 	for range 5 {
 		prefix, err := newDNSDomainPrefix()
 		if err != nil {
-			h.logger.Error("failed to generate DNS domain prefix", "error", err)
+			h.logger.Error("failed to generate DNS domain prefix", "error_type", fmt.Sprintf("%T", err))
 			writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-CREATE-004", "Failed to create DNS domain", h.logger)
 			return
 		}
@@ -126,7 +130,7 @@ func (h *DNSDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 			if hyperfleetdb.IsAlreadyExists(err) {
 				continue
 			}
-			h.logger.Error("failed to reserve DNS domain prefix", "error", err, "account_id", accountID)
+			h.logger.Error("failed to reserve DNS domain prefix", "error_type", fmt.Sprintf("%T", err), "account_id", redact(accountID))
 			writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-CREATE-004", "Failed to create DNS domain", h.logger)
 			return
 		}
@@ -150,7 +154,7 @@ func (h *DNSDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 			if hyperfleetdb.IsAlreadyExists(err) && cleanupErr == nil {
 				continue
 			}
-			h.logger.Error("failed to store DNS domain reservation", "error", err, "cleanup_error", cleanupErr, "account_id", accountID)
+			h.logger.Error("failed to store DNS domain reservation", "error_type", fmt.Sprintf("%T", err), "cleanup_error_type", fmt.Sprintf("%T", cleanupErr), "account_id", redact(accountID))
 			writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-CREATE-004", "Failed to create DNS domain", h.logger)
 			return
 		}
@@ -163,7 +167,7 @@ func (h *DNSDomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 			ReservedAtTimestamp: reservedAt.Time,
 		}
 		if err := api.Write(w, http.StatusCreated, response); err != nil {
-			h.logger.Error("failed to write DNS domain response", "error", err)
+			h.logger.Error("failed to write DNS domain response", "error_type", fmt.Sprintf("%T", err))
 		}
 		return
 	}
@@ -177,7 +181,7 @@ func (h *DNSDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	domainID := mux.Vars(r)["id"]
 	reservations, err := h.db.ListDNSDomainReservations(ctx, accountID)
 	if err != nil {
-		h.logger.Error("failed to list DNS domains for delete", "error", err, "account_id", accountID)
+		h.logger.Error("failed to list DNS domains for delete", "error_type", fmt.Sprintf("%T", err), "account_id", redact(accountID))
 		writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-DELETE-001", "Failed to delete DNS domain", h.logger)
 		return
 	}
@@ -196,30 +200,48 @@ func (h *DNSDomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	clusters, err := h.db.ListClusters(ctx, accountID)
 	if err != nil {
-		h.logger.Error("failed to check DNS domain usage", "error", err, "account_id", accountID, "domain_id", domainID)
+		h.logger.Error("failed to check DNS domain usage", "error_type", fmt.Sprintf("%T", err), "account_id", redact(accountID), "domain_id", redact(domainID))
 		writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-DELETE-001", "Failed to delete DNS domain", h.logger)
 		return
 	}
 	for i := range clusters.Items {
-		if clusters.Items[i].Spec.HostedCluster.DNS.BaseDomain == domainID {
+		if strings.EqualFold(strings.TrimSuffix(clusters.Items[i].Spec.HostedCluster.DNS.BaseDomain, "."), strings.TrimSuffix(domainID, ".")) {
 			writeDNSDomainError(w, http.StatusConflict, "DNSDOMAINS-DELETE-003", "DNS domain is in use by a cluster", h.logger)
 			return
 		}
 	}
 
-	if err := h.db.DeleteDNSDomainReservation(ctx, accountID, reservation.Name); err != nil {
-		h.logger.Error("failed to delete DNS domain reservation", "error", err, "account_id", accountID, "domain_id", domainID)
+	reservation, err = h.db.BeginDeleteDNSDomainReservation(ctx, accountID, reservation.Name)
+	if err != nil {
+		if hyperfleetdb.IsNotFound(err) {
+			writeDNSDomainError(w, http.StatusNotFound, "DNSDOMAINS-DELETE-002", "DNS domain not found", h.logger)
+			return
+		}
+		if hyperfleetdb.IsConflict(err) {
+			writeDNSDomainError(w, http.StatusConflict, "DNSDOMAINS-DELETE-003", "DNS domain is in use by a cluster", h.logger)
+			return
+		}
+		h.logger.Error("failed to fence DNS domain from new claims", "error_type", fmt.Sprintf("%T", err), "account_id", redact(accountID), "domain_id", redact(domainID))
 		writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-DELETE-001", "Failed to delete DNS domain", h.logger)
 		return
 	}
+
+	// Release the unique index first. The reservation remains as a deletion
+	// record if this fails, so retries can find it and finish cleanup.
 	if err := h.db.DeleteDNSDomainIndex(ctx, reservation.Spec.IndexRef.Namespace, reservation.Spec.IndexRef.Name); err != nil && !hyperfleetdb.IsNotFound(err) {
-		h.logger.Error("failed to release DNS domain index", "error", err, "account_id", accountID, "domain_id", domainID)
+		h.logger.Error("failed to release DNS domain index", "error_type", fmt.Sprintf("%T", err), "account_id", redact(accountID), "domain_id", redact(domainID))
 		writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-DELETE-001", "Failed to release DNS domain reservation", h.logger)
+		return
+	}
+	if err := h.db.DeleteDNSDomainReservation(ctx, accountID, reservation.Name); err != nil && !hyperfleetdb.IsNotFound(err) {
+		h.logger.Error("failed to delete DNS domain reservation", "error_type", fmt.Sprintf("%T", err), "account_id", redact(accountID), "domain_id", redact(domainID))
+		writeDNSDomainError(w, http.StatusInternalServerError, "DNSDOMAINS-DELETE-001", "Failed to delete DNS domain reservation", h.logger)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// newDNSDomainPrefix generates the random shard prefix used in a DNS domain ID.
 func newDNSDomainPrefix() (string, error) {
 	bytes := make([]byte, 4)
 	if _, err := rand.Read(bytes); err != nil {
@@ -228,8 +250,9 @@ func newDNSDomainPrefix() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+// writeDNSDomainError writes a Kubernetes-style status response for DNS errors.
 func writeDNSDomainError(w http.ResponseWriter, status int, code, message string, logger *slog.Logger) {
 	if err := api.WriteError(w, APIError{Code: code, HTTPStatus: status, Message: message}); err != nil {
-		logger.Error("failed to write DNS domain error", "error", err, "code", code)
+		logger.Error("failed to write DNS domain error", "error_type", fmt.Sprintf("%T", err), "code", code)
 	}
 }

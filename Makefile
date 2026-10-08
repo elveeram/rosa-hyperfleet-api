@@ -254,7 +254,7 @@ test-e2e-rosa-cli:
 	echo "Building rosa CLI..." && \
 	cd $$ROSA_TMPDIR && $(MAKE) $(ROSA_BUILD_TARGET) && \
 	export PATH="$$PWD:$$PATH" && \
-	echo "Running rosa hyperfleet E2E tests..." && \
+	echo "Running rosa cli E2E tests..." && \
 	name=$${CLUSTER_NAME:-hf-e2e-$$(date +%s)} && \
 	export HYPERFLEET_URL="$${HYPERFLEET_URL}" && \
 	export CLUSTER_NAME="$$name" && \
@@ -266,7 +266,9 @@ test-e2e-rosa-cli:
 	export WORKSPACE="$$ROSA_TMPDIR" && \
 	if [ -n "$(ROSA_SKIP)$(ROSA_LABEL_FILTER)" ]; then \
 		echo "Running with custom ginkgo filters..." && \
-		ginkgo run -v --timeout 3h \
+		$(GINKGO) run -v --timeout 3h \
+			--junit-report=junit-rosa-cli.xml \
+			--output-dir=$(TEST_OUTPUT_DIR) \
 			$(if $(ROSA_SKIP),--skip="$(ROSA_SKIP)") \
 			$(if $(ROSA_LABEL_FILTER),--label-filter="$(ROSA_LABEL_FILTER)") \
 			./tests/e2e/; \

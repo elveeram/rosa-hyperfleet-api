@@ -235,6 +235,11 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.AdditionalTrustBundle != nil {
+		in, out := &in.AdditionalTrustBundle, &out.AdditionalTrustBundle
+		*out = new(string)
+		**out = **in
+	}
 	if in.Tags != nil {
 		in, out := &in.Tags, &out.Tags
 		*out = make(map[string]string, len(*in))
