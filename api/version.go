@@ -16,4 +16,4 @@ limitations under the License.
 
 package api
 
-const Version = "0.1.17"
+const Version = "0.1.1"
