@@ -20,7 +20,7 @@ sequenceDiagram
         NPC->>PG: Set phase=WaitingForCluster, requeue
     else Cluster has Bound Placement
         NPC->>NPC: Generate NodePool manifest
-        NPC->>DDB: Write ApplyDesire (nodepools/{clusterName}-{nodePoolName})
+        NPC->>DDB: Write ApplyDesire (nodepools/{clusterName}-{childName})
         NPC->>DDB: Write ReadDesire for NodePool status
         NPC->>PG: Set phase=Provisioning
         KA->>DDB: Read ApplyDesires
@@ -44,11 +44,14 @@ sequenceDiagram
 
 ### Generated Resource
 
-The NodePool manifest name on the MC is `{clusterName}-{nodePoolName}` and lives in namespace `clusters-{clusterID}`.
+The public NodePool name is `{clusterName}.{childName}`. On the management
+cluster, the manifest keeps the established `{clusterName}-{childName}` name;
+the renderer extracts the child segment before adding the cluster prefix, so
+the prefix appears once. It lives in namespace `clusters-{clusterID}`.
 
 | Resource              | Name                           | Purpose                                   |
 | --------------------- | ------------------------------ | ----------------------------------------- |
-| NodePool (HyperShift) | `{clusterName}-{nodePoolName}` | Worker node set on the management cluster |
+| NodePool (HyperShift) | `{clusterName}-{childName}` | Worker node set on the management cluster |
 
 ## Deletion Flow
 
@@ -64,8 +67,8 @@ sequenceDiagram
     User->>PG: Delete NodePool CR (sets DeletionTimestamp)
     NPC->>PG: Detect DeletionTimestamp, set phase=Deleting
     NPC->>PG: Look up parent Cluster → get PlacementRef
-    NPC->>DDB: Delete ApplyDesire spec for nodepools/{clusterName}-{nodePoolName}
-    NPC->>DDB: Write DeleteDesire for nodepools/{clusterName}-{nodePoolName}
+    NPC->>DDB: Delete ApplyDesire spec for nodepools/{clusterName}-{childName}
+    NPC->>DDB: Write DeleteDesire for nodepools/{clusterName}-{childName}
     NPC->>DDB: Poll status table for deletion confirmation
     NPC->>NPC: Requeue until confirmed
     NPC->>DDB: Delete ReadDesire spec

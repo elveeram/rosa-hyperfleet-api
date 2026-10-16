@@ -46,7 +46,10 @@ with `hyperfleet.io/owner-uid`.
 
 Cluster `metadata.name` is a DNS label up to 63 characters. NodePool names use
 `<cluster>.<child>` with each part independently validated as a DNS label up to 63
-characters. HyperShift NodePool resources use only the child portion of that name.
+characters. HyperShift NodePool resources use the established
+`<cluster>-<child>` name, derived from the public name's child portion so the
+cluster prefix appears once (for example, `my-cluster.workers` becomes
+`my-cluster-workers`).
 
 ## Authorization
 

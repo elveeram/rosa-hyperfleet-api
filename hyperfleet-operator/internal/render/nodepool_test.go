@@ -67,7 +67,7 @@ func TestNodePoolResourceNaming(t *testing.T) {
 		t.Fatalf("NodePoolResource: %v", err)
 	}
 
-	wantName := "workers"
+	wantName := "my-cluster-workers"
 	if r.Name != wantName {
 		t.Errorf("Name = %q, want %q", r.Name, wantName)
 	}
@@ -98,6 +98,9 @@ func TestNodePoolResourceObject(t *testing.T) {
 
 	if np.Spec.ClusterName != HostedClusterName(cluster) {
 		t.Errorf("ClusterName = %q, want %q", np.Spec.ClusterName, HostedClusterName(cluster))
+	}
+	if np.Name != "my-cluster-workers" {
+		t.Errorf("Name = %q, want %q", np.Name, "my-cluster-workers")
 	}
 	if np.Spec.Replicas == nil || *np.Spec.Replicas != 3 {
 		t.Errorf("Replicas = %v, want 3", np.Spec.Replicas)

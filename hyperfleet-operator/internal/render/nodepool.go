@@ -25,14 +25,18 @@ func NodePoolResource(nodePool *hyperfleetv1alpha1.NodePool, cluster *hyperfleet
 	if hostedClusterName == "" {
 		return Resource{}, fmt.Errorf("parent Cluster %s/%s has no valid HostedCluster name", cluster.Namespace, cluster.Name)
 	}
-	parentName, npName, ok := strings.Cut(nodePool.Name, ".")
-	if !ok || parentName != clusterName || npName == "" || strings.Contains(npName, ".") {
+	parentName, childName, ok := strings.Cut(nodePool.Name, ".")
+	if !ok || parentName != clusterName || childName == "" || strings.Contains(childName, ".") {
 		return Resource{}, fmt.Errorf("NodePool name %q must be <cluster>.<child> for parent Cluster %q", nodePool.Name, clusterName)
 	}
+	// The public API name is <cluster>.<child>, while HyperShift NodePools
+	// retain the established <cluster>-<child> management-cluster name.
+	// Use the child portion here so the cluster name is included exactly once.
+	managementNodePoolName := fmt.Sprintf("%s-%s", clusterName, childName)
 
 	npSpec, err := toNodePoolSpec(&nodePool.Spec.NodePool)
 	if err != nil {
-		return Resource{}, fmt.Errorf("converting NodePoolSpec for nodepool %s/%s: %w", ns, npName, err)
+		return Resource{}, fmt.Errorf("converting NodePoolSpec for nodepool %s/%s: %w", ns, managementNodePoolName, err)
 	}
 	npSpec.ClusterName = hostedClusterName
 	// NodePools without an explicit release follow the parent cluster's.
@@ -81,14 +85,14 @@ func NodePoolResource(nodePool *hyperfleetv1alpha1.NodePool, cluster *hyperfleet
 
 	return Resource{
 		Group: "hypershift.openshift.io", Version: "v1beta1", Resource: "nodepools",
-		Name: npName, Namespace: ns,
+		Name: managementNodePoolName, Namespace: ns,
 		Object: &hypershiftv1beta1.NodePool{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "hypershift.openshift.io/v1beta1",
 				Kind:       "NodePool",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      npName,
+				Name:      managementNodePoolName,
 				Namespace: ns,
 				Labels:    clusterLabels(clusterID),
 			},
