@@ -418,6 +418,140 @@ func TestBuildBundlesCardinality(t *testing.T) {
 	}
 }
 
+func TestRunGeneratesPartialUpdateResource(t *testing.T) {
+	dir := t.TempDir()
+	draftPath := filepath.Join(dir, "draft.yaml")
+	overridesPath := filepath.Join(dir, "overrides.yaml")
+	outputDir := filepath.Join(dir, "generated")
+	draft := `resources:
+  nodePool:
+    sdkType: v1alpha1.NodePool
+    fields:
+      - path: metadata.uid
+        goType: string
+        operations: [read]
+      - path: metadata.name
+        goType: string
+        operations: [read]
+      - path: spec.autoRepair
+        goType: boolean
+        operations: [create, update]
+      - path: spec.serverComputed
+        goType: string
+        operations: [create, update]
+      - path: spec.maxNodesTotal
+        goType: integer(int32)
+        operations: [create, update]
+      - path: spec.createOnly
+        goType: string
+        operations: [create]
+      - path: spec.labels
+        goType: map
+        operations: [create, update]
+      - path: spec.nodePool.taints
+        goType: array(object)
+        operations: [create, update]
+`
+	overrides := `config:
+  package: generated
+  tfProviderPkg: example/provider
+resources:
+  nodePool:
+    partialUpdate: true
+    aliases:
+      - path: metadata.uid
+        alias: id
+        type: string
+        computed: true
+      - path: metadata.name
+        type: string
+      - path: spec.autoRepair
+        type: bool
+      - path: spec.serverComputed
+        type: string
+        computed: true
+      - path: spec.maxNodesTotal
+        type: "*int32"
+      - path: spec.createOnly
+        type: string
+      - path: spec.labels
+        type: map
+      - path: spec.nodePool.taints
+        type: list(object)
+        element:
+          attributes:
+            key:
+              type: string
+              required: true
+            value:
+              type: string
+              optional: true
+            effect:
+              type: string
+              required: true
+`
+	if err := os.WriteFile(draftPath, []byte(draft), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(overridesPath, []byte(overrides), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(draftPath, overridesPath, outputDir); err != nil {
+		t.Fatal(err)
+	}
+
+	resource, err := os.ReadFile(filepath.Join(outputDir, "nodepool_resource_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resourceText := string(resource)
+	for _, want := range []string{
+		`"encoding/json"`,
+		`partialUpdateDocument(`,
+		`RESTClient().`,
+		`Resource("nodepools")`,
+		`Name(plan.Name.ValueString())`,
+		`Body(body)`,
+		`PostPartialExpand(ctx context.Context, input *NodePoolState, document map[string]any) diag.Diagnostics`,
+		`r.Handler.PostPartialExpand(ctx, &plan, updateDocument)`,
+		`var NodePoolPartialUpdatePaths = map[string]bool{`,
+		`"spec.autoRepair":`,
+		`"spec.maxNodesTotal":`,
+		`var NodePoolClearablePartialUpdatePaths = map[string]bool{`,
+		`"spec.maxNodesTotal":`,
+		`pathbind.Flatten(ctx, updated, &nativeState)`,
+		`nativeNodePoolToTerraform(&nativeState)`,
+		`mergeResponseNodePool(&plan, responseState)`,
+		`mergeResponseNodePool(&plan, &priorState)`,
+	} {
+		if !strings.Contains(resourceText, want) {
+			t.Errorf("generated partial-update resource missing %q:\n%s", want, resourceText)
+		}
+	}
+	utils, err := os.ReadFile(filepath.Join(outputDir, "utils_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"func partialUpdateDocument",
+		"func appendPartialUpdatePath",
+		"func setPartialUpdateValue",
+		`setPartialUpdateValue(document, path, nil)`,
+		"field %s cannot be removed because the API does not support clearing it",
+	} {
+		if !strings.Contains(string(utils), want) {
+			t.Errorf("generated partial-update utilities missing %q:\n%s", want, utils)
+		}
+	}
+	partialPaths := resourceText[strings.Index(resourceText, "var NodePoolPartialUpdatePaths"):strings.Index(resourceText, "var NodePoolClearablePartialUpdatePaths")]
+	if strings.Contains(partialPaths, `"spec.createOnly":`) {
+		t.Errorf("generated partial-update paths must exclude create-only fields:\n%s", partialPaths)
+	}
+	if strings.Contains(partialPaths, `"spec.serverComputed":`) {
+		t.Errorf("generated partial-update paths must exclude computed fields:\n%s", partialPaths)
+	}
+}
+
 func TestPlanModifierFieldSupportsAllAttributeTypes(t *testing.T) {
 	cases := []struct {
 		typeName string
@@ -548,6 +682,12 @@ func TestRunValidationErrors(t *testing.T) {
 			draft:     validDraft,
 			overrides: "config:\n  package: generated\n  tfProviderPkg: example/provider\nresources:\n  cluster:\n    aliases:\n      - path: spec.displayName\n        type: object\n",
 			want:      "unsupported Terraform consumer type",
+		},
+		{
+			name:      "partial update JSON encoded field",
+			draft:     validDraft,
+			overrides: "config:\n  package: generated\n  tfProviderPkg: example/provider\nresources:\n  cluster:\n    partialUpdate: true\n    aliases:\n      - path: spec.displayName\n        json_encoded: true\n",
+			want:      "partialUpdate does not support json_encoded field spec.displayName",
 		},
 	}
 	for _, tc := range tests {

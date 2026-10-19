@@ -99,6 +99,10 @@ func Run(draftPath, overridesPath, outputDir string) error {
 
 		resName := pkg.TitleCase(resKey)
 		sdkShort := pkg.SDKShortType(sdkType)
+		partialUpdate := ovRes.PartialUpdate != nil && *ovRes.PartialUpdate
+		if partialUpdate && len(bundles) > 0 {
+			return fmt.Errorf("building aliases for %s: partialUpdate does not support bundled fields", resKey)
+		}
 
 		// Collect immutable and computed fields for schema generation
 		immutableList := []string{}
@@ -119,6 +123,10 @@ func Run(draftPath, overridesPath, outputDir string) error {
 				nameField = a.GoName
 			}
 		}
+		partialUpdatePaths, clearablePartialUpdatePaths, err := partialUpdatePathPolicies(updateFields, partialUpdate)
+		if err != nil {
+			return fmt.Errorf("building aliases for %s: %w", resKey, err)
+		}
 		if !hasUIDField {
 			return fmt.Errorf("building aliases for %s: metadata.uid field is missing", resKey)
 		}
@@ -127,19 +135,22 @@ func Run(draftPath, overridesPath, outputDir string) error {
 		}
 
 		td := pkg.TFTemplateData{
-			Package:        cfg.Package,
-			ResourceName:   resName,
-			SDKType:        sdkType,
-			SDKShortType:   sdkShort,
-			AllFields:      aliases,
-			TopFields:      topFields,
-			Bundles:        bundles,
-			CreateFields:   createFields,
-			UpdateFields:   updateFields,
-			ImmutableList:  immutableList,
-			ComputedList:   computedList,
-			NameField:      nameField,
-			HandlerFactory: "New" + resName + "HandlerImpl",
+			Package:                     cfg.Package,
+			ResourceName:                resName,
+			SDKType:                     sdkType,
+			SDKShortType:                sdkShort,
+			AllFields:                   aliases,
+			TopFields:                   topFields,
+			Bundles:                     bundles,
+			CreateFields:                createFields,
+			UpdateFields:                updateFields,
+			ImmutableList:               immutableList,
+			ComputedList:                computedList,
+			NameField:                   nameField,
+			PartialUpdate:               partialUpdate,
+			PartialUpdatePaths:          partialUpdatePaths,
+			ClearablePartialUpdatePaths: clearablePartialUpdatePaths,
+			HandlerFactory:              "New" + resName + "HandlerImpl",
 		}
 
 		// Generate state struct file: <resource>_state_gen.go
@@ -168,6 +179,25 @@ func Run(draftPath, overridesPath, outputDir string) error {
 	}
 
 	return nil
+}
+
+func partialUpdatePathPolicies(fields []pkg.MergedAlias, enabled bool) (partialUpdatePaths, clearablePartialUpdatePaths []string, err error) {
+	if !enabled {
+		return nil, nil, nil
+	}
+	for _, field := range fields {
+		if field.Computed {
+			continue
+		}
+		if field.JSONEncoded {
+			return nil, nil, fmt.Errorf("partialUpdate does not support json_encoded field %s", field.Path)
+		}
+		partialUpdatePaths = append(partialUpdatePaths, field.Path)
+		if strings.HasPrefix(field.Type, "*") && !field.Required && !field.Immutable {
+			clearablePartialUpdatePaths = append(clearablePartialUpdatePaths, field.Path)
+		}
+	}
+	return partialUpdatePaths, clearablePartialUpdatePaths, nil
 }
 
 func buildBundles(aliases []pkg.MergedAlias) ([]pkg.MergedAlias, []pkg.AliasBundle, error) {
