@@ -222,8 +222,6 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
     ...
 }
 
-When a resource is configured with `partialUpdate`, `Update()` builds a raw JSON document from planned changes, calls `PostPartialExpand()` so handlers can add unmappable SDK fields, and then issues a partial PUT. Top-level and bundled API-mapped fields are compared by leaf path. Computed and create-only fields are excluded from the partial paths, and JSON-encoded fields are rejected because their Terraform string representation cannot be safely embedded as a structured JSON value. Bundle members with no API path (for example, a Terraform convenience field) are not added to the wire document; handlers can translate them in `PostPartialExpand()` when needed.
-
 func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
     // Scaffolding flow:
     // 1. Get state
@@ -243,6 +241,8 @@ func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportSt
     ...
 }
 ```
+
+When a resource is configured with `partialUpdate`, `Update()` builds a raw JSON document from planned changes, calls `PostPartialExpand()` so handlers can add unmappable SDK fields, and then issues a partial PUT. Top-level and bundled API-mapped fields are compared by leaf path. Computed and create-only fields are excluded from the partial paths, and JSON-encoded fields are rejected because their Terraform string representation cannot be safely embedded as a structured JSON value. Bundle members with no API path (for example, a Terraform convenience field) are not added to the wire document; handlers can translate them in `PostPartialExpand()` when needed.
 
 #### 5. Schema Generation from Overrides
 
