@@ -100,9 +100,6 @@ func Run(draftPath, overridesPath, outputDir string) error {
 		resName := pkg.TitleCase(resKey)
 		sdkShort := pkg.SDKShortType(sdkType)
 		partialUpdate := ovRes.PartialUpdate != nil && *ovRes.PartialUpdate
-		if partialUpdate && len(bundles) > 0 {
-			return fmt.Errorf("building aliases for %s: partialUpdate does not support bundled fields", resKey)
-		}
 
 		// Collect immutable and computed fields for schema generation
 		immutableList := []string{}
@@ -186,6 +183,9 @@ func partialUpdatePathPolicies(fields []pkg.MergedAlias, enabled bool) (partialU
 		return nil, nil, nil
 	}
 	for _, field := range fields {
+		if field.Path == "" || field.Path == "-" {
+			continue
+		}
 		if field.Computed {
 			continue
 		}

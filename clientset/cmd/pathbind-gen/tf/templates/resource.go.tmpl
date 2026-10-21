@@ -558,6 +558,14 @@ var {{.ResourceName}}ClearablePartialUpdatePaths = map[string]bool{
 	{{printf "%q" .}}: true,
 {{- end}}
 }
+{{- range .Bundles}}
+
+var {{$.ResourceName}}{{.GoName}}PartialUpdateAttributes = map[string]string{
+{{- range .Fields}}
+	"{{.GoName}}": "{{attrName .}}",
+{{- end}}
+}
+{{- end}}
 {{- end}}
 
 {{- if .PartialUpdate}}
@@ -576,10 +584,25 @@ var {{.ResourceName}}ClearablePartialUpdatePaths = map[string]bool{
 		{{.ResourceName}}PartialUpdatePaths,
 		{{.ResourceName}}ClearablePartialUpdatePaths,
 	)
-	resp.Diagnostics.Append(updateDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+{{- range .Bundles}}
+
+		appendPartialUpdateBundle(
+			ctx,
+			plan.{{.GoName}},
+			priorState.{{.GoName}},
+			reflect.TypeOf({{$.ResourceName}}{{.GoName}}Native{}),
+			{{$.ResourceName}}{{.GoName}}PartialUpdateAttributes,
+			{{$.ResourceName}}PartialUpdatePaths,
+			{{$.ResourceName}}ClearablePartialUpdatePaths,
+			updateDocument,
+			&updateDiags,
+		)
+{{- end}}
+
+		resp.Diagnostics.Append(updateDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 
 	mergeResponse{{.ResourceName}}(&plan, &priorState)
 

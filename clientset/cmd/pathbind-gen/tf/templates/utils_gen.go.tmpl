@@ -88,6 +88,65 @@ func partialUpdateDocument(
 	return document, diagnostics
 }
 
+func appendPartialUpdateBundle(
+	ctx context.Context,
+	planObject types.Object,
+	stateObject types.Object,
+	bundleType reflect.Type,
+	attributeNames map[string]string,
+	updatablePaths map[string]bool,
+	clearablePaths map[string]bool,
+	document map[string]any,
+	diagnostics *diag.Diagnostics,
+) {
+	if planObject.IsUnknown() || stateObject.IsUnknown() {
+		diagnostics.Append(unknownPartialUpdateValueDiagnostics()...)
+		return
+	}
+	planAttributes := planObject.Attributes()
+	stateAttributes := stateObject.Attributes()
+	for fieldIndex := 0; fieldIndex < bundleType.NumField(); fieldIndex++ {
+		nativeField := bundleType.Field(fieldIndex)
+		path := nativeField.Tag.Get("hfsdk")
+		if path == "-" || !strings.HasPrefix(path, "spec.") || !updatablePaths[path] {
+			continue
+		}
+		attributeName, ok := attributeNames[nativeField.Name]
+		if !ok {
+			diagnostics.AddError(
+				"Invalid partial update bundle",
+				fmt.Sprintf("field %s has no Terraform attribute mapping", nativeField.Name),
+			)
+			return
+		}
+		planField, ok := planAttributes[attributeName]
+		if !ok {
+			diagnostics.AddError(
+				"Invalid partial update bundle",
+				fmt.Sprintf("Terraform attribute %s is missing from the plan", attributeName),
+			)
+			return
+		}
+		stateField, ok := stateAttributes[attributeName]
+		if !ok {
+			diagnostics.AddError(
+				"Invalid partial update bundle",
+				fmt.Sprintf("Terraform attribute %s is missing from the prior state", attributeName),
+			)
+			return
+		}
+		appendPartialUpdatePath(
+			ctx,
+			planField,
+			stateField,
+			strings.Split(path, "."),
+			document,
+			clearablePaths,
+			diagnostics,
+		)
+	}
+}
+
 func appendPartialUpdatePath(
 	ctx context.Context,
 	planField reflect.Value,

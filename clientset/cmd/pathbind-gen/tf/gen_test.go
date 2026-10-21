@@ -552,6 +552,96 @@ resources:
 	}
 }
 
+func TestRunGeneratesPartialUpdateResourceWithBundle(t *testing.T) {
+	dir := t.TempDir()
+	draftPath := filepath.Join(dir, "draft.yaml")
+	overridesPath := filepath.Join(dir, "overrides.yaml")
+	outputDir := filepath.Join(dir, "generated")
+	draft := `resources:
+  nodePool:
+    sdkType: v1alpha1.NodePool
+    fields:
+      - path: metadata.name
+        goType: string
+        operations: [create]
+      - path: metadata.uid
+        goType: string
+        operations: [read]
+      - path: spec.nodePool.autoScaling.min
+        goType: integer(int32)
+        operations: [create, update]
+      - path: spec.nodePool.autoScaling.max
+        goType: integer(int32)
+        operations: [create, update]
+`
+	overrides := `config:
+  package: generated
+  tfProviderPkg: example/provider
+resources:
+  nodePool:
+    partialUpdate: true
+    aliases:
+      - path: metadata.uid
+        alias: id
+        type: string
+        computed: true
+      - path: metadata.name
+        type: string
+      - path: spec.nodePool.autoScaling.min
+        alias: min_replicas
+        bundle: autoscaling
+        type: "*int32"
+      - path: spec.nodePool.autoScaling.max
+        alias: max_replicas
+        bundle: autoscaling
+        type: "*int32"
+      - alias: enabled
+        bundle: autoscaling
+        type: bool
+        operations: [create, update]
+`
+	if err := os.WriteFile(draftPath, []byte(draft), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(overridesPath, []byte(overrides), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(draftPath, overridesPath, outputDir); err != nil {
+		t.Fatal(err)
+	}
+
+	resource, err := os.ReadFile(filepath.Join(outputDir, "nodepool_resource_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resourceText := string(resource)
+	for _, want := range []string{
+		`var NodePoolAutoscalingPartialUpdateAttributes = map[string]string{`,
+		`"Min_replicas": "min_replicas"`,
+		`"Max_replicas": "max_replicas"`,
+		`appendPartialUpdateBundle(`,
+		`reflect.TypeOf(NodePoolAutoscalingNative{})`,
+		`"spec.nodePool.autoScaling.min":`,
+		`"spec.nodePool.autoScaling.max":`,
+	} {
+		if !strings.Contains(resourceText, want) {
+			t.Errorf("generated bundled partial-update resource missing %q:\n%s", want, resourceText)
+		}
+	}
+	partialPaths := resourceText[strings.Index(resourceText, "var NodePoolPartialUpdatePaths"):strings.Index(resourceText, "var NodePoolAutoscalingPartialUpdateAttributes")]
+	if strings.Contains(partialPaths, `"":`) {
+		t.Errorf("generated partial-update paths must exclude consumer-only bundle fields:\n%s", partialPaths)
+	}
+
+	utils, err := os.ReadFile(filepath.Join(outputDir, "utils_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(utils), "func appendPartialUpdateBundle") {
+		t.Errorf("generated partial-update utilities missing bundle support:\n%s", utils)
+	}
+}
+
 func TestPlanModifierFieldSupportsAllAttributeTypes(t *testing.T) {
 	cases := []struct {
 		typeName string
