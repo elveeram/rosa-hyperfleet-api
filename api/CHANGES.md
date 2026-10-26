@@ -1,5 +1,26 @@
 # Changes
 
+## 0.1.21 Oct 26 2026
+
+- chore(api): bump version to api/v0.1.25
+- ROSAENG-68195 | refactor: mirror awsplatform spec to curate fields
+- ROSAENG-68185 | feat: aws tags cluster/np day2
+- ROSAENG-68185 | feat: allow day2 aws tag changes
+- chore(api): bump version to api/v0.1.24
+- chore(api): bump version to api/v0.1.23
+- Rename platform-api to seaplane-api
+- Rename ROSA HyperFleet to ROSA Seaplane
+- chore(api): bump version to api/v0.1.22
+- feat: add resettable pathbind updates
+- chore(api): bump version to api/v0.1.21
+- ROSAENG-65107 | chore: Enable node drain grace period for v2
+- ROSAENG-68200 | feat: mark ipv4 subnet as immutable to match hypershift
+- ROSAENG-68169 | feat: include imds knob support for nps
+- ROSAENG-68177: feat: expose capabilities via mirror type
+- [ROSAENG-68125] | feat(api): add Spot node pools with optional interruption queue
+- ROSAENG-65211 | chore: Enable windowsLI for v2
+
+
 ## 0.1.25 Oct 23 2026
 
 - ROSAENG-68195 | refactor: mirror awsplatform spec to curate fields
